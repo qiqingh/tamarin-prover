@@ -1449,7 +1449,6 @@ rule init_servNet:
     [ 
         Fr(~idSN),
         Fr(~sk_SN)
-
     ] // idSN denotes VPLMNID
     --[ ServNet(~idSN) ]->
     [   
@@ -1460,19 +1459,25 @@ rule init_servNet:
 
 // Initialize a home network
 rule init_homeNet:
-    [Fr(~sk_HN),
-      Fr(~idHN)]
+    [
+        Fr(~sk_HN),
+        Fr(~idHN)
+    ]
     --[ HomeNet(~idHN) ]->
-    [!HSS(~idHN, ~sk_HN),
-     !Pk(~idHN, pk(~sk_HN)),
-     Out(<~idHN, pk(~sk_HN)>)]
+    [
+        !HSS(~idHN, ~sk_HN),
+        !Pk(~idHN, pk(~sk_HN)),
+        Out(<~idHN, pk(~sk_HN)>)
+    ]
 
 // Initialize the subscription
 rule add_subscription:
-    [Fr(~supi),
-     Fr(~k),
-     Fr(~sqn_root),
-     !HSS(~idHN, ~sk_HN)]
+    [
+        Fr(~supi),
+        Fr(~k),
+        Fr(~sqn_root),
+        !HSS(~idHN, ~sk_HN)
+    ]
     --[
         // Restriction
         Subscribe(~supi, ~idHN),
@@ -1480,9 +1485,11 @@ rule add_subscription:
         // Helper lemmas
         Sqn_Create(~supi, ~idHN, ~sqn_root)
     ]->
-    [!Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
-     Sqn_UE(~supi, ~idHN, ~sqn_root+'1', ~sqn_root, '1'),
-     Sqn_HSS(~supi, ~idHN, ~sqn_root+'1', ~sqn_root, '1')]
+    [
+        !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
+        Sqn_UE(~supi, ~idHN, ~sqn_root+'1', ~sqn_root, '1'),
+        Sqn_HSS(~supi, ~idHN, ~sqn_root+'1', ~sqn_root, '1')
+    ]
 
 
 rule add_SN_register:
@@ -1575,16 +1582,20 @@ rule ue_send_attachReq:
         suci = < aenc{<~supi, ~R>}pk_HN, ~idHN>
         msg = suci
     in
-    [!Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
-     !Pk(~idHN, pk_HN),
-     Fr(~R),
-     Fr(~tid)]
+    [
+        !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
+        !Pk(~idHN, pk_HN),
+        Fr(~R),
+        Fr(~tid)
+    ]
     --[
         // Executability
         Start_UE_Session(~supi)
     ]->
-    [St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
-     Out(msg)]
+    [
+        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
+        Out(msg)
+    ]
 
 // Attach Request + Authentication Initiation Request (AIR)
 // NOTE: The AIR message is in fact the initial authentication request of the service "Nausf_UEAuthentication_Authenticate" (see TS 33.501 9.6.2).
@@ -1605,8 +1616,10 @@ rule seaf_receive_attachReq_send_air:
         // Executability
         Start_SEAF_Session(~idSN)
     ]->
-    [St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
-     SndS(~idSN, idHN, <'air', msg>)]
+    [
+        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
+        SndS(~idSN, idHN, <'air', msg>)
+    ]
 
 // Authentication Initiation Request (AIR) + 5G Authentication Initiation Answer (5G-AIA)
 // For key derivarion, see [5G] clause 6.1.3.2 and annex A6
@@ -1644,16 +1657,18 @@ rule hss_receive_air_send_aia:
         msgOut = < 5G_AV, SKHN_encrypt_PKSN >
 
         in
-    [!HSS(~idHN, ~sk_HN),
-     RcvS(idSN, ~idHN, <'air', msgIn>),
+    [
+        !HSS(~idHN, ~sk_HN),
+        RcvS(idSN, ~idHN, <'air', msgIn>),
 
-     !Pk(idSN, pk_SN),
+        !Pk(idSN, pk_SN),
 
-     !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
-     Sqn_HSS(~supi, ~idHN, SqnHSS, ~sqn_root, count),
-     Fr(~RAND),
-     Fr(~tid),
-     In(count)]
+        !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
+        Sqn_HSS(~supi, ~idHN, SqnHSS, ~sqn_root, count),
+        Fr(~RAND),
+        Fr(~tid),
+        In(count)
+    ]
     --[
         // Open chains
         Sqn_HSS_Invariance(~idHN, ~supi, SqnNext, ~sqn_root, count+'1'),
@@ -1675,9 +1690,11 @@ rule hss_receive_air_send_aia:
         Honest(~idHN),
         Honest(idSN)
     ]->
-    [St_1_HSS(~tid, ~idHN, ~supi, suci, idSN, SNID, ~k, SqnNext, XRES_star, ~RAND, ~sqn_root, ~sk_HN),
-         Sqn_HSS(~supi, ~idHN, SqnNext, ~sqn_root, count+'1'),
-         SndS(~idHN, idSN, <'aia', msgOut>)]
+    [
+        St_1_HSS(~tid, ~idHN, ~supi, suci, idSN, SNID, ~k, SqnNext, XRES_star, ~RAND, ~sqn_root, ~sk_HN),
+        Sqn_HSS(~supi, ~idHN, SqnNext, ~sqn_root, count+'1'),
+        SndS(~idHN, idSN, <'aia', msgOut>)
+    ]
 
 
 // 5G Authentication Initiation Answer (5G-AIA) + Authentication Request (Auth-Req)
@@ -1700,7 +1717,8 @@ rule seaf_receive_aia_send_authReq:
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
         // !Pk(~idSN, ~pk_SN),
         // !Pk(idHN, pk(sk_HN)),
-        RcvS(idHN, ~idSN, <'aia', msgIn>)]
+        RcvS(idHN, ~idSN, <'aia', msgIn>)
+    ]
     --[
         // Open chains
         Out_Src(RAND, AUTN),
@@ -1747,10 +1765,12 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         K_seaf = KDF(KDF(<CK, IK>, <SNID, SqnHSS XOR AK>), SNID)
         msgOut = RES_star
     in
-    [St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
-     !Pk(~idHN, pk_HN),
-     Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
-     In(msgIn)]
+    [
+        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
+        !Pk(~idHN, pk_HN),
+        Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
+        In(msgIn)
+    ]
     --[
         // Open chains
         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
@@ -1783,9 +1803,11 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Honest(~idHN),
         Honest(idSN)        
     ]->
-    [St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
-     Out(msgOut),
-     Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)]
+    [
+        St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+        Out(msgOut),
+        Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)
+    ]
 
 
 // Authentication Request (Auth-Req) and Sync Failure
@@ -1808,10 +1830,12 @@ rule ue_receive_authReq_fail_freshness_send_sync_failure:
         AUTS = <SqnUE XOR AKS, MACS >
         out_msg = AUTS
     in
-    [St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
-     Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
-     In(msgIn),
-     In(count)]     // necessary to avoid open chains
+    [
+        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
+        Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
+        In(msgIn),
+        In(count)
+    ]     // necessary to avoid open chains
     --[
         // Restriction
         Greater_Or_Equal_Than(SqnUE, SqnHSS), // Check freshness (FAIL)
@@ -1822,8 +1846,10 @@ rule ue_receive_authReq_fail_freshness_send_sync_failure:
             // Helper lemmas
         Sqn_UE_Nochange(~supi, ~idHN, SqnUE)
     ]->
-    [Out(out_msg),
-     Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count)]
+    [
+        Out(out_msg),
+        Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count)
+    ]
 
 // Authentication Response (Auth-Resp) + 5G Authentication Confirmation (5G-AC)
 // NOTE: The 5G-AC is a subsequent authentication requests to the service "Nausf_UEAuthentication_Authenticate" (see TS 33.501 9.6.2).
@@ -1833,14 +1859,18 @@ rule seaf_receive_authResp_send_ac:
         suci = <conc_supi,  idHN>
         msgOut = < RES_star, suci, SNID >
     in
-    [St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
-     In(RES_star)]
+    [
+        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        In(RES_star)
+    ]
     --[
         // Security properties
         Running(~idSN, idHN, <'HSS','SEAF', <'RES_star', RES_star>>)
     ]->
-    [St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
-    SndS(~idSN, idHN, <'ac', msgOut>)]
+    [
+        St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        SndS(~idSN, idHN, <'ac', msgOut>)
+    ]
 
 
 // Synchronization Failure and 5G Authentication Synchronization message
@@ -1854,10 +1884,14 @@ rule seaf_receive_syncFailure_send_authSync:
         AUTS = < SqnUEXorAKS, MACS >
         out_msg = < RAND, AUTS >
     in
-    [St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
-     In(AUTS)]
+    [
+        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        In(AUTS)
+    ]
     -->
-    [SndS(~idSN, idHN, <'resync', out_msg>)]
+    [
+        SndS(~idSN, idHN, <'resync', out_msg>)
+    ]
 
 // 5G Authentication Confirmation (5G-AC) + Authentication Confirmation Answer (5G-ACA)
 // NOTE: 5G-AC is a subsequent authentication requests to the service "Nausf_UEAuthentication_Authenticate" (see TS 33.501 9.6.2).
@@ -1894,11 +1928,13 @@ rule hss_receive_ac_send_aca:
         Honest(~supi),
         Honest(idSN)
     ]->
-    [SndS(~idHN, idSN, <'aca', msgOut>)]
+    [
+        SndS(~idHN, idSN, <'aca', msgOut>)
+    ]
 
 // Authentication Confirmation Answer (5G-ACA)
 rule seaf_receive_aca:
-        let
+    let
         SNID = <'5G', ~idSN>
         msgIn = <'confirm', supi>
     in
@@ -1923,8 +1959,10 @@ rule seaf_receive_aca:
         Honest(idHN),
         Honest(~idSN)
     ]->
-    [St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi, ~sk_SN, pk(~sk_SN)),
-     Out(f1(K_seaf, 'SEAF'))] // Key confimration message with UE
+    [
+        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi, ~sk_SN, pk(~sk_SN)),
+        Out(f1(K_seaf, 'SEAF'))
+    ] // Key confimration message with UE
 
 // 5G Authentication Synchronization message
 // In this model, the HSS aborts after resync, and does NOT
@@ -1939,10 +1977,12 @@ rule hss_receive_authSync:
         msg = < ~RAND, AUTS >
 
     in
-    [St_1_HSS(~tid, ~idHN, ~supi, suci, idSN, SNID, ~k, SqnHSS, XRES_star, ~RAND, ~sqn_root, ~sk_HN),
-     Sqn_HSS(~supi, ~idHN, SqnHSS, ~sqn_root, count),
-     RcvS(idSN, ~idHN, <'resync', msg>),
-     In(count+dif)]
+    [
+        St_1_HSS(~tid, ~idHN, ~supi, suci, idSN, SNID, ~k, SqnHSS, XRES_star, ~RAND, ~sqn_root, ~sk_HN),
+        Sqn_HSS(~supi, ~idHN, SqnHSS, ~sqn_root, count),
+        RcvS(idSN, ~idHN, <'resync', msg>),
+        In(count+dif)
+    ]
     --[
         // Open chains
         Sqn_HSS_Invariance(~idHN, ~supi, SqnUE, ~sqn_root, count+dif),
@@ -1950,28 +1990,36 @@ rule hss_receive_authSync:
         // Executability
         HSS_Resync_End(count+dif)
     ]->
-    [Sqn_HSS(~supi, ~idHN, SqnUE, ~sqn_root, count+dif)]
+    [
+        Sqn_HSS(~supi, ~idHN, SqnUE, ~sqn_root, count+dif)
+    ]
 
 // Key confirmation between SEAF and UE (in order to model 'implicit authentication')
 rule ue_key_confirmation:
-        [St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
-     In(f1(K_seaf, 'SEAF'))]
-        --[
+    [
+        St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+        In(f1(K_seaf, 'SEAF'))
+    ]
+    --[
         // Security properties (after key confirmation)
-            CommitConf(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
-            CommitConf(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
-            CommitConf(~supi, ~idHN, <'UE','HSS', <'supi', ~supi>>),
+        CommitConf(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
+        CommitConf(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
+        CommitConf(~supi, ~idHN, <'UE','HSS', <'supi', ~supi>>),
         CommitConf(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
         SecretConf(<'UE', ~supi>, 'supi', ~supi),
         Honest(~supi),
         Honest(~idHN),
         Honest(idSN)        
     ]->
-    [Out(f1(K_seaf, 'UE'))]
+    [
+        Out(f1(K_seaf, 'UE'))
+    ]
 
 rule seaf_key_confirmation_check:
-        [St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi , ~sk_SN, pk(~sk_SN)),
-     In(f1(K_seaf, 'UE'))]
+    [
+        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi , ~sk_SN, pk(~sk_SN)),
+        In(f1(K_seaf, 'UE'))
+    ]
         --[
         // Security properties
         CommitConf(~idSN, idHN, <'SEAF','HSS', <'K_seaf', K_seaf>>),
