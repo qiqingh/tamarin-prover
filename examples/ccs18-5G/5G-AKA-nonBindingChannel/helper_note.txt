@@ -1,0 +1,107 @@
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_honest --derivcheck-timeout=0 5G_AKA_new.spthy > test.txt
+
+executability_honest
+
+ssh qiqing@aisec.cse.buffalo.edu
+
+
+scp ./5G_AKA_test.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin-prover/examples/ccs18-5G/5G-AKA-nonBindingChannel/
+
+###################################################
+add_subscription
+HSS
+
+HSS -[Subscribe, Sqn_Create]-> !Ltk_Sym, Sqn_UE, Sqn_HSS 
+
+###################################################
+ue_send_attachReq
+UE->SN
+	msg = suci
+		suci = < aenc{<~supi, ~R>}pk_HN, ~idHN>
+Ltk_Sym -[Start_UE_Session]-> St_1_UE
+
+###################################################
+seaf_receive_attachReq_send_air
+SN->HN
+	msg = <suci, SNID>
+
+SEAF -[Start_SEAF_Session]-> St_1_SEAF, SndS
+	SN also send signature -> just send pk_SN 
+		pk_SN
+
+###################################################
+hss_receive_air_send_aia
+HN->SN
+	HN encrypt pk_SN
+	aenc(pk_SN, sk_HN)
+
+HSS, RcvS, !Ltk_Sym, Sqn_HSS -[Sqn_HSS_Invariance, Src, Start_HSS_Session, HSS_Send_Aia]-> St_1_HSS, Sqn_HSS, SndS
+	msgIn = <suci, SNID>
+	msgOut = 5G_AV
+		5G_AV = < ~RAND, HXRES_star, K_seaf, AUTN >
+
+###################################################
+seaf_receive_aia_send_authReq 
+SN->UE
+	SN send additional:
+	aenc(pk_SN, sk_HN)
+	aenc(RAND, sk_SN)
+
+St_1_SEAF, RcvS -[Out_Src]-> St_2_SEAF		
+	msgIn = 5G_AV
+		5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
+	msgOut = < RAND, AUTN, SNID >
+
+
+###################################################
+ue_receive_authReq_freshness_success_send_authResp 
+UE->SN
+	UE get pk_SN_derive
+		pk_SN_derive = adec(aenc(pk_SN, sk_HN), pk_HN)
+	UE get RAND_derive
+		RAND_derive = adec(aenc(RAND, sk_SN), pk_SN_derive)
+
+St_1_UE, Sqn_UE -[Sqn_UE_Invariance, Sqn_UE_Change, Sqn_UE_Use]-> St_2_UE, Sqn_UE
+	msgIn = < RAND, AUTN, SNID >
+	msgOut = RES_star
+    	RES_star = KDF(<CK, IK>, <SNID, RES, RAND>)
+
+###################################################
+ue_receive_authReq_fail_freshness_send_sync_failure
+UE->SN
+St_1_UE, Sqn_UE -[Greater_Or_Equal_Than, Sqn_UE_Invariance, Sqn_UE_Nochange]-> Sqn_UE
+
+###################################################
+seaf_receive_authResp_send_ac 
+SN->HN
+St_2_SEAF -[]-> St_3_SEAF, SndS
+
+###################################################
+seaf_receive_syncFailure_send_authSync 
+SN->HN
+St_2_SEAF -[]-> SndS
+
+###################################################
+hss_receive_ac_send_aca
+HN->SN
+St_1_HSS, RcvS -[HSS_End]-> SndS
+
+###################################################
+seaf_receive_aca 
+SN
+St_3_SEAF, RcvS -[SEAF_End]-> St_4_SEAF
+
+###################################################
+hss_receive_authSync
+HN
+St_1_HSS, Sqn_HSS, RcvS -[Sqn_HSS_Invariance, HSS_Resync_End]-> Sqn_HSS
+
+###################################################
+ue_key_confirmation
+UE
+St_2_UE, In() -[]-> out()
+
+###################################################
+seaf_key_confirmation_check
+SN
+St_4_SEAF, In() -[SEAF_EndConf]-> []
