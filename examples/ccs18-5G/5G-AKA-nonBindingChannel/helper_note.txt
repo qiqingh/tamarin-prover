@@ -1,4 +1,5 @@
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_honest --derivcheck-timeout=0 5G_AKA_new.spthy > test.txt
+##command useful
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_honest --derivcheck-timeout=0 5G_AKA_test.spthy > test.txt
 
 executability_honest
 
@@ -6,6 +7,38 @@ ssh qiqing@aisec.cse.buffalo.edu
 
 
 scp ./5G_AKA_test.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin-prover/examples/ccs18-5G/5G-AKA-nonBindingChannel/
+
+
+
+##thoughts 
+
+need to adapt the followings:
+
+SN:
+	generate key pair <pk_SN, sk_SN>
+	acquire the signature from the HN sig_SN: aenc(pk_SN, sk_HN)
+
+	here need to decide:
+	1. just let the SN to send the pk_SN to HN
+	2. add two status rules
+		SN send the pk_SN to HN
+		HN reply with the aenc(pk_SN, sk_HN)
+
+UE:
+	also store the pk_HN
+
+SN -> HN 
+	send the signature 
+HN -> SN
+	send the aenc(pk_SN, sk_HN)
+SN -> HN
+	forward aenc(pk_SN, sk_HN)
+	send the aenc(RAND, sk_SN)
+UE:
+	use the stored pk_HN to decrypt the aenc(pk_SN, sk_HN) to get the verified pk_SN
+	use the pk_SN to decrypt the aenc(RAND, sk_SN) to get the RAND
+	
+
 
 ###################################################
 add_subscription
