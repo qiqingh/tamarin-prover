@@ -1652,7 +1652,7 @@ rule seaf_receive_aia_send_authReq:
 	let
 		5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
 		msgIn = 5G_AV
-                msgOut = < RAND, AUTN, SNID >
+        msgOut = < RAND, AUTN, SNID >
         in
 	[St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN),
 	 RcvS(idHN, ~idSN, <'aia', msgIn>)]
@@ -1676,7 +1676,7 @@ rule ue_receive_authReq_freshness_success_send_authResp:
 		SqnHSS = SqnUE + dif // check freshness
 		AK = f5(~k, RAND)
 		MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
-                AUTN = <SqnHSS XOR AK, MAC>
+        AUTN = <SqnHSS XOR AK, MAC>
 		SNID = <'5G', idSN>
 		msgIn = < RAND, AUTN, SNID >
 		// Output

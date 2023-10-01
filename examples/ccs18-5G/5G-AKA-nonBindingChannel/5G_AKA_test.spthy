@@ -1585,29 +1585,35 @@ rule ue_send_attachReq:
     [
         !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
         !Pk(~idHN, pk_HN),
+
+        !SEAF(~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN)),
+
         Fr(~R),
         Fr(~tid)
     ]
-    --[
+    --[ 
+        
         // Executability
         Start_UE_Session(~supi)
     ]->
     [
-        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
+        St_1_UE(~tid, ~supi, ~idHN, ~idSN, ~k, ~sqn_root, pk_HN),
         Out(msg)
     ]
 
 // Attach Request + Authentication Initiation Request (AIR)
 // NOTE: The AIR message is in fact the initial authentication request of the service "Nausf_UEAuthentication_Authenticate" (see TS 33.501 9.6.2).
+
 rule seaf_receive_attachReq_send_air:
     let
-        suci = <conc_supi,  idHN>
-        // msg = <suci, SNID >
-        msg = <suci, SNID, pk_SN>
+        suci = < conc_supi, idHN >
+        // msg = < suci, SNID >
+        msg = < suci, SNID, pk_SN >
 
     in
     [
-        !SEAF(~idSN, SNID, idHN, ~sk_SN, pk(~sk_SN)),
+        // !SEAF(~idSN, SNID),
+        !SEAF(~idSN, SNID, idHN, ~sk_SN, pk_SN),
         !Pk(~idSN, pk_SN),
         Fr(~tid),
         In(suci)
@@ -1617,7 +1623,7 @@ rule seaf_receive_attachReq_send_air:
         Start_SEAF_Session(~idSN)
     ]->
     [
-        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
+        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN),
         SndS(~idSN, idHN, <'air', msg>)
     ]
 
@@ -1632,7 +1638,7 @@ rule hss_receive_air_send_aia:
         suci = <conc_supi, ~idHN>
         SNID = <'5G', idSN> // HSS checks that the received SNID matches the authenticated channel with idSN
         // msgIn = <suci, SNID >
-        msgIn = <suci, SNID, pk_SN>
+        msgIn = < suci, SNID, pk_SN >
         SqnNext = SqnHSS + '1'
         
         // 2. Send
@@ -1656,7 +1662,7 @@ rule hss_receive_air_send_aia:
 
         msgOut = < 5G_AV, SKHN_encrypt_PKSN >
 
-        in
+    in
     [
         !HSS(~idHN, ~sk_HN),
         RcvS(idSN, ~idHN, <'air', msgIn>),
@@ -1670,6 +1676,7 @@ rule hss_receive_air_send_aia:
         In(count)
     ]
     --[
+        // SEAF_End(),
         // Open chains
         Sqn_HSS_Invariance(~idHN, ~supi, SqnNext, ~sqn_root, count+'1'),
         Src(~RAND, AUTN),
@@ -1703,7 +1710,7 @@ rule seaf_receive_aia_send_authReq:
         5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
         // msgIn = 5G_AV
 
-        // SKHN_encrypt_PKSN = aenc(~pk_SN, sk_HN)
+        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
 
         msgIn = < 5G_AV, SKHN_encrypt_PKSN >
 
@@ -1715,19 +1722,20 @@ rule seaf_receive_aia_send_authReq:
         in
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
+        // Fr(~RAND),
         // !Pk(~idSN, ~pk_SN),
-        // !Pk(idHN, pk(sk_HN)),
+        !Pk(idHN, pk(sk_HN)),
         RcvS(idHN, ~idSN, <'aia', msgIn>)
     ]
     --[
         // Open chains
         Out_Src(RAND, AUTN),
-
         // Security properties
         Running(~idSN, idHN, <'HSS','SEAF', <'K_seaf', K_seaf>>)
     ]->
     [
         St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
+        // St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, SKSN_encrypt_RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
         Out(msgOut)
     ]
 
@@ -1745,7 +1753,16 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         
         SNID = <'5G', idSN>
         // msgIn = < RAND, AUTN, SNID >
-        
+
+        // if not involve the derivation of SKSN_encrypt_RAND, SKHN_encrypt_PKSN, seems it will into endless loop
+
+        // if add the derivation of SKSN_encrypt_RAND, SKHN_encrypt_PKSN, the RAND come from nowhere
+        // here if Fr a RAND than the executability get failed 2 steps
+        // here is add the St_2_SEAF in both premise and conclusion than the executability get failed 15 steps 
+
+        SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
+        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
+
 
         PKSN_derive = adec(SKHN_encrypt_PKSN, pk_HN)
         RAND_derive = adec(SKSN_encrypt_RAND, PKSN_derive)
@@ -1766,12 +1783,16 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         msgOut = RES_star
     in
     [
-        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
-        !Pk(~idHN, pk_HN),
+        St_1_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN),
+        // St_2_SEAF(~tid, idSN, SNID, conc_supi, ~idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        // Fr(~RAND),
+        !Pk(idSN, pk(~sk_SN)),
+        !Pk(~idHN, pk(~sk_HN)),
         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
         In(msgIn)
     ]
     --[
+        SEAF_End(),
         // Open chains
         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
 
@@ -1789,7 +1810,7 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Running(~supi, ~idHN, <'HSS','UE', <'K_seaf', K_seaf>>),
         Running(~supi, ~idHN, <'HSS','UE', <'snname', idSN>>),
         Running(~supi, ~idHN, <'HSS','UE', <'supi', ~supi>>),
-        Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
+        // Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
         Secret(<'UE', ~supi>, 'key', K_seaf),
         Secret(<'UE', ~supi>, 'supi', ~supi),
         Secret(<'UE', ~supi>, 'k', ~k),
@@ -1798,16 +1819,79 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Commit(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
         Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
-        Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+        // Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
         Honest(~supi),
         Honest(~idHN),
         Honest(idSN)        
     ]->
     [
-        St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+        St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+        // St_2_SEAF(~tid, idSN, SNID, conc_supi, ~idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         Out(msgOut),
         Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)
     ]
+
+// original 
+
+// rule ue_receive_authReq_freshness_success_send_authResp:
+//     let
+//         // Input, checks
+//         SqnHSS = SqnUE + dif // check freshness
+//         AK = f5(~k, RAND)
+//         MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
+//                 AUTN = <SqnHSS XOR AK, MAC>
+//         SNID = <'5G', idSN>
+//         msgIn = < RAND, AUTN, SNID >
+//         // Output
+//         RES = f2(~k, RAND)
+//         IK = f4(~k, RAND)
+//         CK = f3(~k, RAND)
+//         RES_star = KDF(<CK, IK>, <SNID, RES, RAND>)
+//         K_seaf = KDF(KDF(<CK, IK>, <SNID, SqnHSS XOR AK>), SNID)
+//         msgOut = RES_star
+//     in
+//     // [St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root),
+//     [
+//         St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
+//         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
+//         In(msgIn)
+//     ]
+//     --[
+//         // Open chains
+//         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
+
+//         // Helper lemmas
+//         Sqn_UE_Change(~supi, ~idHN, SqnHSS),
+//         Sqn_UE_Use(~supi, ~idHN, SqnHSS),
+
+//         // Security properties
+//         Running(~supi, idSN,<'SEAF','UE',<'RES_star', RES_star>>),
+//         Running(~supi, idSN,<'SEAF','UE',<'K_seaf', K_seaf>>),
+//         Running(~supi, idSN,<'SEAF','UE',<'supi', ~supi>>),
+//         Running(~supi, ~idHN, <'HSS','UE', <'K_seaf', K_seaf>>),
+//         Running(~supi, ~idHN, <'HSS','UE', <'snname', idSN>>),
+//         Running(~supi, ~idHN, <'HSS','UE', <'supi', ~supi>>),
+//         Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
+//         Secret(<'UE', ~supi>, 'key', K_seaf),
+//         Secret(<'UE', ~supi>, 'supi', ~supi),
+//         Secret(<'UE', ~supi>, 'k', ~k),
+//         Commit(~supi, ~idHN, <'UE','HSS',<'AUTN', AUTN>>),
+//         Commit(~supi, ~idHN, <'UE','HSS',<'supi', ~supi>>),
+//         Commit(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
+//         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
+//         Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
+//         Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+//         Honest(~supi),
+//         Honest(~idHN),
+//         Honest(idSN)        
+//     ]->
+//     // [St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf),
+//     [
+//         St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+//         Out(msgOut),
+//         Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)
+//     ]
+
 
 
 // Authentication Request (Auth-Req) and Sync Failure
@@ -1831,7 +1915,7 @@ rule ue_receive_authReq_fail_freshness_send_sync_failure:
         out_msg = AUTS
     in
     [
-        St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, pk_HN),
+        St_1_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN),
         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
         In(msgIn),
         In(count)
@@ -1942,7 +2026,7 @@ rule seaf_receive_aca:
      RcvS(idHN, ~idSN, <'aca', msgIn>)]
     --[
         // Executability
-        SEAF_End(),
+        // SEAF_End(),
 
         // Security properties
         Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
@@ -1997,7 +2081,7 @@ rule hss_receive_authSync:
 // Key confirmation between SEAF and UE (in order to model 'implicit authentication')
 rule ue_key_confirmation:
     [
-        St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
+        St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
         In(f1(K_seaf, 'SEAF'))
     ]
     --[
@@ -2044,8 +2128,8 @@ restriction subscribe_once:
 restriction greater_or_equal_than:
     " All x y #i. Greater_Or_Equal_Than(x,y)@i ==> not (Ex z. x + z = y) "
 
-restriction Equality:
-    "All x y #i. Equality(x,y) @#i ==> x = y"
+// restriction Equality:
+//     "All x y #i. Equality(x,y) @#i ==> x = y"
 
 // Dummy lemma for timing info only.
 lemma dummy: "not(F)"
