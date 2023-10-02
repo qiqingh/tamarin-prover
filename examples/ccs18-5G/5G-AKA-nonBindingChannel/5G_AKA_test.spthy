@@ -1667,11 +1667,11 @@ rule hss_receive_air_send_aia:
         HXRES_star = SHA256(XRES_star, ~RAND)
         5G_AV = < ~RAND, HXRES_star, K_seaf, AUTN >
 
-        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
+        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
 
-        // msgOut = 5G_AV
+        msgOut = 5G_AV
 
-        msgOut = < 5G_AV, SKHN_encrypt_PKSN >
+        // msgOut = < 5G_AV, SKHN_encrypt_PKSN >
 
     in
     [
@@ -1721,14 +1721,16 @@ rule seaf_receive_aia_send_authReq:
         5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
         // msgIn = 5G_AV
 
-        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
+        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
 
-        msgIn = < 5G_AV, SKHN_encrypt_PKSN >
+        // msgIn = < 5G_AV, SKHN_encrypt_PKSN >
+
+        msgIn =  5G_AV 
 
         // SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
 
-        // msgOut = < RAND, AUTN, SNID >
-        msgOut = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+        msgOut = < RAND, AUTN, SNID, sig_SN>
+        // msgOut = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
 
         // msgOut = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN, f1(RAND, 'SEAF')>
 
@@ -1738,8 +1740,8 @@ rule seaf_receive_aia_send_authReq:
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN), sig_SN),
         // Fr(~RAND),
-        !Pk(~idSN, pk(~sk_SN)),
-        !Pk(idHN, pk(sk_HN)),
+        // !Pk(~idSN, pk(~sk_SN)),
+        // !Pk(idHN, pk(sk_HN)),
         RcvS(idHN, ~idSN, <'aia', msgIn>),
     ]
     --[
@@ -1826,7 +1828,9 @@ rule ue_receive_authReq_freshness_success_send_authResp:
 
         // RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
 
-        msgIn = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+        // msgIn = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+
+        msgIn = < RAND, AUTN, SNID, sig_SN>
 
 
         // Output
@@ -1842,14 +1846,15 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         St_1_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN),
         // St_2_SEAF(~tid, idSN, SNID, conc_supi, ~idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         // Fr(~RAND),
-        // !Pk(idSN, pk(~sk_SN)),
-        // !Pk(~idHN, pk(~sk_HN)),
+        !Pk(idSN, pk(~sk_SN)),
+        !Pk(~idHN, pk(~sk_HN)),
         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
         In(msgIn)
         // In(f1(RAND, 'SEAF'))
     ]
     --[
         // SEAF_End(),
+        Equality(verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true),
         // Open chains
         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
 

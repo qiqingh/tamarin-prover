@@ -1508,16 +1508,14 @@ rule (modulo E) hss_receive_air_send_aia:
    ),
    Sqn_HSS( ~supi, ~idHN, ('1'++SqnHSS), ~sqn_root, ('1'++count) ),
    SndS( ~idHN, idSN,
-         <'aia', 
-          <~RAND, 
-           SHA256(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                      <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
-                  ~RAND), 
-           KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                   <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
-               <'5G', idSN>), 
-           (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>, 
-          aenc(pk(~sk_SN), ~sk_HN)>
+         <'aia', ~RAND, 
+          SHA256(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                     <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
+                 ~RAND), 
+          KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                  <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
+              <'5G', idSN>), 
+          (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>
    )
    ]
 
@@ -1580,16 +1578,14 @@ rule (modulo E) hss_receive_air_send_aia:
      ),
      Sqn_HSS( ~supi, ~idHN, ('1'++SqnHSS), ~sqn_root, ('1'++count) ),
      SndS( ~idHN, idSN,
-           <'aia', 
-            <~RAND, 
-             SHA256(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                        <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
-                    ~RAND), 
-             KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                     <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
-                 <'5G', idSN>), 
-             (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>, 
-            aenc(pk(~sk_SN), ~sk_HN)>
+           <'aia', ~RAND, 
+            SHA256(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                       <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
+                   ~RAND), 
+            KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                    <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
+                <'5G', idSN>), 
+            (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>
      )
      ]
     variants (modulo AC)
@@ -1615,10 +1611,7 @@ rule (modulo E) seaf_receive_aia_send_authReq:
    [
    St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN), sig_SN
    ),
-   !Pk( ~idSN, pk(~sk_SN) ), !Pk( idHN, pk(sk_HN) ),
-   RcvS( idHN, ~idSN,
-         <'aia', <RAND, HXRES_star, K_seaf, AUTN>, aenc(pk(~sk_SN), sk_HN)>
-   )
+   RcvS( idHN, ~idSN, <'aia', RAND, HXRES_star, K_seaf, AUTN> )
    ]
   --[
   Out_Src( RAND, AUTN ),
@@ -1628,21 +1621,23 @@ rule (modulo E) seaf_receive_aia_send_authReq:
    St_2_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf,
               ~sk_SN, pk(~sk_SN), sig_SN
    ),
-   Out( <RAND, AUTN, SNID, aenc(pk(~sk_SN), sk_HN)> )
+   Out( <RAND, AUTN, SNID, sig_SN> )
    ]
 
-  // loop breaker: [3]
+  // loop breaker: [1]
   /* has exactly the trivial AC variant */
 
 rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
    [
    St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
+   !Pk( idSN, pk(~sk_SN) ), !Pk( ~idHN, pk(~sk_HN) ),
    Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
    In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
-        <'5G', idSN>, SKHN_encrypt_PKSN>
+        <'5G', idSN>, sig_SN>
    )
    ]
   --[
+  Equality( verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true ),
   Sqn_UE_Invariance( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) ),
   Sqn_UE_Change( ~supi, ~idHN, (SqnUE++dif) ),
   Sqn_UE_Use( ~supi, ~idHN, (SqnUE++dif) ),
@@ -1708,8 +1703,101 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
    Sqn_UE( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) )
    ]
 
-  // loop breaker: [1]
-  /* has exactly the trivial AC variant */
+  // loop breaker: [3]
+  /*
+  rule (modulo AC) ue_receive_authReq_freshness_success_send_authResp:
+     [
+     St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
+     !Pk( idSN, pk(~sk_SN) ), !Pk( ~idHN, pk(~sk_HN) ),
+     Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
+     In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
+          <'5G', idSN>, sig_SN>
+     )
+     ]
+    --[
+    Equality( z, true ),
+    Sqn_UE_Invariance( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) ),
+    Sqn_UE_Change( ~supi, ~idHN, (SqnUE++dif) ),
+    Sqn_UE_Use( ~supi, ~idHN, (SqnUE++dif) ),
+    Running( ~supi, idSN,
+             <'SEAF', 'UE', 'RES_star', 
+              KDF(<f3(~k, RAND), f4(~k, RAND)>, <<'5G', idSN>, f2(~k, RAND), RAND>)>
+    ),
+    Running( ~supi, idSN,
+             <'SEAF', 'UE', 'K_seaf', 
+              KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                      <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                  <'5G', idSN>)
+             >
+    ),
+    Running( ~supi, idSN, <'SEAF', 'UE', 'supi', ~supi> ),
+    Running( ~supi, ~idHN,
+             <'HSS', 'UE', 'K_seaf', 
+              KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                      <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                  <'5G', idSN>)
+             >
+    ),
+    Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
+    Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
+    Secret( <'UE', ~supi>, 'key',
+            KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                    <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                <'5G', idSN>)
+    ),
+    Secret( <'UE', ~supi>, 'supi', ~supi ), Secret( <'UE', ~supi>, 'k', ~k ),
+    Commit( ~supi, ~idHN,
+            <'UE', 'HSS', 'AUTN', (f5(~k, RAND)⊕(SqnUE++dif)), 
+             f1(~k, <(SqnUE++dif), RAND>)>
+    ),
+    Commit( ~supi, ~idHN, <'UE', 'HSS', 'supi', ~supi> ),
+    Commit( ~supi, ~idHN, <'UE', 'HSS', 'snname', idSN> ),
+    Commit( ~supi, ~idHN,
+            <'UE', 'HSS', 'K_seaf', 
+             KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                     <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                 <'5G', idSN>)
+            >
+    ),
+    Commit( ~supi, idSN,
+            <'UE', 'SEAF', 'K_seaf', 
+             KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                     <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                 <'5G', idSN>)
+            >
+    ),
+    Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+    ]->
+     [
+     St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
+              KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                      <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
+                  <'5G', idSN>),
+              pk_HN
+     ),
+     Out( KDF(<f3(~k, RAND), f4(~k, RAND)>,
+              <<'5G', idSN>, f2(~k, RAND), RAND>)
+     ),
+     Sqn_UE( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) )
+     ]
+    variants (modulo AC)
+    1. ~sk_HN
+             = ~sk_HN.20
+       ~sk_SN
+             = ~sk_SN.21
+       sig_SN
+             = sign(pk(~sk_SN.21), ~sk_HN.20)
+       z     = true
+    
+    2. ~sk_HN
+             = ~sk_HN.30
+       ~sk_SN
+             = ~sk_SN.31
+       sig_SN
+             = sig_SN.41
+       z     = verify(sig_SN.41, pk(~sk_SN.31), pk(~sk_HN.30))
+    // loop breaker: [3]
+  */
 
 rule (modulo E) ue_receive_authReq_fail_freshness_send_sync_failure:
    [
@@ -2312,9 +2400,8 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
   solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
     case receive_secure_case_1
     solve( RcvS( ~idHN, ~idSN,
-                 <'aia', <~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>, 
-                  aenc(pk(~sk_SN), ~sk_HN)>
-           ) ▶₃ #vr.1 )
+                 <'aia', ~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>
+           ) ▶₁ #vr.1 )
       case receive_secure_case_1
       solve( RcvS( ~idSN, ~idHN,
                    <'ac', 
@@ -2336,7 +2423,7 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
                    ) @ #vk )
               case ue_receive_authReq_freshness_success_send_authResp
               solve( Sqn_UE( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                     ) ▶₁ #vr.17 )
+                     ) ▶₃ #vr.17 )
                 case add_subscription
                 solve( !KU( f1(~k, <('1'++~sqn_root++dif), ~RAND>) ) @ #vk.10 )
                   case seaf_receive_aia_send_authReq
@@ -2344,9 +2431,8 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
                     case coerce
                     solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.2 )
                       case seaf_receive_aia_send_authReq
-                      solve( RcvS( idHN.1, ~idSN.1,
-                                   <'aia', <RAND.1, HXRES_star, K_seaf, AUTN>, aenc(pk(~sk_SN.1), sk_HN.1)>
-                             ) ▶₃ #vr.22 )
+                      solve( RcvS( idHN.1, ~idSN.1, <'aia', RAND.1, HXRES_star, K_seaf, AUTN>
+                             ) ▶₁ #vr.22 )
                         case receive_secure_case_1
                         solve( (#vl.1, 0) ~~> (#vk.2, 0) )
                           case d_0_snd
@@ -2364,7 +2450,10 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
                                       case seaf_receive_aia_send_authReq
                                       solve( !KU( ~idSN ) @ #vk.14 )
                                         case init_servNet_case_1
-                                        SOLVED // trace found
+                                        solve( !KU( sign(pk(~sk_SN), ~sk_HN) ) @ #vk.15 )
+                                          case seaf_receive_aia_send_authReq
+                                          SOLVED // trace found
+                                        qed
                                       qed
                                     qed
                                   qed
@@ -4161,7 +4250,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 25.42s
+  processing time: 25.87s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4171,7 +4260,7 @@ analyzed: 5G_AKA_test.spthy
   sqn_hss_src (all-traces): analysis incomplete (1 steps)
   sqn_ue_nodecrease (all-traces): analysis incomplete (1 steps)
   sqn_ue_unique (all-traces): analysis incomplete (1 steps)
-  executability_honest (exists-trace): verified (22 steps)
+  executability_honest (exists-trace): verified (23 steps)
   executability_keyConf_honest (exists-trace): analysis incomplete (1 steps)
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)
