@@ -1590,7 +1590,7 @@ rule seaf_receive_attachReq_send_air:
 // NOTE: The 5G-AIA is the corresponding Nausf_UEAuthentication_Authenticate Response.
 rule hss_receive_air_send_aia:
 	let
-	        // 1. Receive
+        // 1. Receive
 		conc_supi = aenc{<~supi, ~R>}pk(~sk_HN)
 		suci = <conc_supi, ~idHN>
 		SNID = <'5G', idSN> // HSS checks that the received SNID matches the authenticated channel with idSN
@@ -1598,7 +1598,7 @@ rule hss_receive_air_send_aia:
 		SqnNext = SqnHSS + '1'
 		
 		// 2. Send
-                //     a. ARPF part
+        //     a. ARPF part
 		MAC = f1(~k, <SqnNext, ~RAND>)
 	 	XRES = f2(~k, ~RAND)
 		CK = f3(~k, ~RAND)
@@ -1753,9 +1753,9 @@ rule ue_receive_authReq_fail_freshness_send_sync_failure:
 		Greater_Or_Equal_Than(SqnUE, SqnHSS), // Check freshness (FAIL)
 
 		// Open chains
-                Sqn_UE_Invariance(~supi, ~idHN, SqnUE, ~sqn_root, count),
+        Sqn_UE_Invariance(~supi, ~idHN, SqnUE, ~sqn_root, count),
 
-	        // Helper lemmas
+        // Helper lemmas
 		Sqn_UE_Nochange(~supi, ~idHN, SqnUE)
 	]->
 	[Out(out_msg),

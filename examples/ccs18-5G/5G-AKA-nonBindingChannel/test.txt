@@ -7,7 +7,7 @@ theory 5G_aka begin
 
 builtins: multiset, xor
 functions: KDF/2, SHA256/2, adec/2, aenc/2, f1/2, f1_star/2, f2/2, f3/2,
-           f4/2, f5/2, f5_star/2, fst/1, pair/2, pk/1, snd/1
+           f4/2, f5/2, f5_star/2, fst/1, get_RAND/2, pair/2, pk/1, snd/1
 equations:
     adec(aenc(x.1, pk(x.2)), x.2) = x.1,
     fst(<x.1, x.2>) = x.1,
@@ -1516,7 +1516,7 @@ rule (modulo E) hss_receive_air_send_aia:
 rule (modulo E) seaf_receive_aia_send_authReq:
    [
    St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN) ),
-   !Pk( idHN, pk(sk_HN) ),
+   !Pk( ~idSN, pk(~sk_SN) ), !Pk( idHN, pk(sk_HN) ),
    RcvS( idHN, ~idSN,
          <'aia', <RAND, HXRES_star, K_seaf, AUTN>, aenc(pk(~sk_SN), sk_HN)>
    )
@@ -1529,124 +1529,68 @@ rule (modulo E) seaf_receive_aia_send_authReq:
    St_2_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf,
               ~sk_SN, pk(~sk_SN)
    ),
-   Out( <aenc(RAND, ~sk_SN), AUTN, SNID, aenc(pk(~sk_SN), sk_HN)> )
+   Out( <RAND, AUTN, SNID, aenc(pk(~sk_SN), sk_HN)> )
    ]
 
-  // loop breaker: [2]
+  // loop breaker: [3]
   /* has exactly the trivial AC variant */
 
 rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
    [
    St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
-   St_2_SEAF( ~tid, idSN, <'5G', idSN>, conc_supi, ~idHN, RAND, HXRES_star,
-              KDF(KDF(<
-                       f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                       f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                      <<'5G', idSN>, 
-                       (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                        (SqnUE++dif))
-                      >),
-                  <'5G', idSN>),
-              ~sk_SN, pk(~sk_SN)
-   ),
-   !Pk( idSN, pk(~sk_SN) ), !Pk( ~idHN, pk(~sk_HN) ),
    Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
-   In( <aenc(RAND, ~sk_SN), 
-        <
-         (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-          (SqnUE++dif)), 
-         f1(~k,
-            <(SqnUE++dif), 
-             adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))>)
-        >, 
-        <'5G', idSN>, aenc(pk(~sk_SN), ~sk_HN)>
+   In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
+        <'5G', idSN>, SKHN_encrypt_PKSN>
    )
    ]
   --[
-  SEAF_End( ),
   Sqn_UE_Invariance( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) ),
   Sqn_UE_Change( ~supi, ~idHN, (SqnUE++dif) ),
   Sqn_UE_Use( ~supi, ~idHN, (SqnUE++dif) ),
   Running( ~supi, idSN,
            <'SEAF', 'UE', 'RES_star', 
-            KDF(<
-                 f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                 f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                <<'5G', idSN>, 
-                 f2(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                 adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))>)
-           >
+            KDF(<f3(~k, RAND), f4(~k, RAND)>, <<'5G', idSN>, f2(~k, RAND), RAND>)>
   ),
   Running( ~supi, idSN,
            <'SEAF', 'UE', 'K_seaf', 
-            KDF(KDF(<
-                     f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                     f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                    <<'5G', idSN>, 
-                     (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                      (SqnUE++dif))
-                    >),
+            KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                    <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
                 <'5G', idSN>)
            >
   ),
   Running( ~supi, idSN, <'SEAF', 'UE', 'supi', ~supi> ),
   Running( ~supi, ~idHN,
            <'HSS', 'UE', 'K_seaf', 
-            KDF(KDF(<
-                     f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                     f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                    <<'5G', idSN>, 
-                     (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                      (SqnUE++dif))
-                    >),
+            KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                    <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
                 <'5G', idSN>)
            >
   ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
   Secret( <'UE', ~supi>, 'key',
-          KDF(KDF(<
-                   f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                   f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                  <<'5G', idSN>, 
-                   (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                    (SqnUE++dif))
-                  >),
+          KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                  <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
               <'5G', idSN>)
   ),
   Secret( <'UE', ~supi>, 'supi', ~supi ), Secret( <'UE', ~supi>, 'k', ~k ),
   Commit( ~supi, ~idHN,
-          <'UE', 'HSS', 'AUTN', 
-           (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-            (SqnUE++dif)), 
-           f1(~k,
-              <(SqnUE++dif), 
-               adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))>)
-          >
+          <'UE', 'HSS', 'AUTN', (f5(~k, RAND)⊕(SqnUE++dif)), 
+           f1(~k, <(SqnUE++dif), RAND>)>
   ),
   Commit( ~supi, ~idHN, <'UE', 'HSS', 'supi', ~supi> ),
   Commit( ~supi, ~idHN, <'UE', 'HSS', 'snname', idSN> ),
   Commit( ~supi, ~idHN,
           <'UE', 'HSS', 'K_seaf', 
-           KDF(KDF(<
-                    f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                    f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                   <<'5G', idSN>, 
-                    (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                     (SqnUE++dif))
-                   >),
+           KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                   <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
                <'5G', idSN>)
           >
   ),
   Commit( ~supi, idSN,
           <'UE', 'SEAF', 'K_seaf', 
-           KDF(KDF(<
-                    f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                    f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                   <<'5G', idSN>, 
-                    (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                     (SqnUE++dif))
-                   >),
+           KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                   <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
                <'5G', idSN>)
           >
   ),
@@ -1654,45 +1598,26 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
   ]->
    [
    St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
-            KDF(KDF(<
-                     f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                     f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                    <<'5G', idSN>, 
-                     (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                      (SqnUE++dif))
-                    >),
+            KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
+                    <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
                 <'5G', idSN>),
             pk_HN
    ),
-   St_2_SEAF( ~tid, idSN, <'5G', idSN>, conc_supi, ~idHN, RAND, HXRES_star,
-              KDF(KDF(<
-                       f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                       f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                      <<'5G', idSN>, 
-                       (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                        (SqnUE++dif))
-                      >),
-                  <'5G', idSN>),
-              ~sk_SN, pk(~sk_SN)
-   ),
-   Out( KDF(<
-             f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-             f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-            <<'5G', idSN>, 
-             f2(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-             adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))>)
+   Out( KDF(<f3(~k, RAND), f4(~k, RAND)>,
+            <<'5G', idSN>, f2(~k, RAND), RAND>)
    ),
    Sqn_UE( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) )
    ]
 
-  // loop breakers: [1,4]
+  // loop breaker: [1]
   /* has exactly the trivial AC variant */
 
 rule (modulo E) ue_receive_authReq_fail_freshness_send_sync_failure:
    [
    St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
    Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
-   In( <RAND, <(SqnHSS⊕f5(~k, RAND)), f1(~k, <SqnHSS, RAND>)>, '5G', idSN>
+   In( <RAND, <(SqnHSS⊕f5(~k, RAND)), f1(~k, <SqnHSS, RAND>)>, 
+        <'5G', idSN>, SKHN_encrypt_PKSN>
    ),
    In( count )
    ]
@@ -1712,7 +1637,9 @@ rule (modulo E) ue_receive_authReq_fail_freshness_send_sync_failure:
      [
      St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
      Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
-     In( <RAND, <z, f1(~k, <SqnHSS, RAND>)>, '5G', idSN> ), In( count )
+     In( <RAND, <z, f1(~k, <SqnHSS, RAND>)>, <'5G', idSN>, SKHN_encrypt_PKSN>
+     ),
+     In( count )
      ]
     --[
     Greater_Or_Equal_Than( SqnUE, SqnHSS ),
@@ -1724,133 +1651,133 @@ rule (modulo E) ue_receive_authReq_fail_freshness_send_sync_failure:
      Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count )
      ]
     variants (modulo AC)
-     1. ~k    = ~k.16
-        RAND  = RAND.20
+     1. ~k    = ~k.17
+        RAND  = RAND.21
         SqnHSS
-              = SqnHSS.21
-        SqnUE = SqnUE.22
-        z     = (SqnHSS.21⊕f5(~k.16, RAND.20))
-        z.1   = (SqnUE.22⊕f5_star(~k.16, RAND.20))
+              = SqnHSS.23
+        SqnUE = SqnUE.24
+        z     = (SqnHSS.23⊕f5(~k.17, RAND.21))
+        z.1   = (SqnUE.24⊕f5_star(~k.17, RAND.21))
     
-     2. ~k    = ~k.16
-        RAND  = RAND.20
+     2. ~k    = ~k.17
+        RAND  = RAND.21
         SqnHSS
-              = SqnHSS.21
+              = SqnHSS.23
         SqnUE = zero
-        z     = (SqnHSS.21⊕f5(~k.16, RAND.20))
-        z.1   = f5_star(~k.16, RAND.20)
+        z     = (SqnHSS.23⊕f5(~k.17, RAND.21))
+        z.1   = f5_star(~k.17, RAND.21)
     
-     3. ~k    = ~k.16
-        RAND  = RAND.20
+     3. ~k    = ~k.17
+        RAND  = RAND.21
         SqnHSS
               = zero
-        SqnUE = SqnUE.22
-        z     = f5(~k.16, RAND.20)
-        z.1   = (SqnUE.22⊕f5_star(~k.16, RAND.20))
+        SqnUE = SqnUE.24
+        z     = f5(~k.17, RAND.21)
+        z.1   = (SqnUE.24⊕f5_star(~k.17, RAND.21))
     
-     4. ~k    = ~k.16
-        RAND  = RAND.20
+     4. ~k    = ~k.17
+        RAND  = RAND.21
         SqnHSS
               = zero
         SqnUE = zero
-        z     = f5(~k.16, RAND.20)
-        z.1   = f5_star(~k.16, RAND.20)
+        z     = f5(~k.17, RAND.21)
+        z.1   = f5_star(~k.17, RAND.21)
     
-     5. ~k    = ~k.20
-        RAND  = RAND.24
-        SqnHSS
-              = f5(~k.20, RAND.24)
-        SqnUE = f5_star(~k.20, RAND.24)
-        z     = zero
-        z.1   = zero
-    
-     6. ~k    = ~k.20
-        RAND  = RAND.24
-        SqnHSS
-              = f5(~k.20, RAND.24)
-        SqnUE = zero
-        z     = zero
-        z.1   = f5_star(~k.20, RAND.24)
-    
-     7. ~k    = ~k.20
-        RAND  = RAND.24
-        SqnHSS
-              = zero
-        SqnUE = f5_star(~k.20, RAND.24)
-        z     = f5(~k.20, RAND.24)
-        z.1   = zero
-    
-     8. ~k    = ~k.21
-        RAND  = RAND.25
-        SqnHSS
-              = SqnHSS.26
-        SqnUE = f5_star(~k.21, RAND.25)
-        z     = (SqnHSS.26⊕f5(~k.21, RAND.25))
-        z.1   = zero
-    
-     9. ~k    = ~k.21
+     5. ~k    = ~k.21
         RAND  = RAND.25
         SqnHSS
               = f5(~k.21, RAND.25)
-        SqnUE = SqnUE.27
+        SqnUE = f5_star(~k.21, RAND.25)
         z     = zero
-        z.1   = (SqnUE.27⊕f5_star(~k.21, RAND.25))
+        z.1   = zero
     
-    10. ~k    = ~k.21
+     6. ~k    = ~k.21
         RAND  = RAND.25
         SqnHSS
               = f5(~k.21, RAND.25)
-        SqnUE = (z.33⊕f5_star(~k.21, RAND.25))
-        z     = zero
-        z.1   = z.33
-    
-    11. ~k    = ~k.21
-        RAND  = RAND.25
-        SqnHSS
-              = zero
-        SqnUE = (z.33⊕f5_star(~k.21, RAND.25))
-        z     = f5(~k.21, RAND.25)
-        z.1   = z.33
-    
-    12. ~k    = ~k.21
-        RAND  = RAND.25
-        SqnHSS
-              = (z.31⊕f5(~k.21, RAND.25))
-        SqnUE = f5_star(~k.21, RAND.25)
-        z     = z.31
-        z.1   = zero
-    
-    13. ~k    = ~k.21
-        RAND  = RAND.25
-        SqnHSS
-              = (z.31⊕f5(~k.21, RAND.25))
         SqnUE = zero
-        z     = z.31
+        z     = zero
         z.1   = f5_star(~k.21, RAND.25)
     
-    14. ~k    = ~k.22
-        RAND  = RAND.26
+     7. ~k    = ~k.21
+        RAND  = RAND.25
         SqnHSS
-              = (z.32⊕f5(~k.22, RAND.26))
-        SqnUE = SqnUE.28
-        z     = z.32
-        z.1   = (SqnUE.28⊕f5_star(~k.22, RAND.26))
+              = zero
+        SqnUE = f5_star(~k.21, RAND.25)
+        z     = f5(~k.21, RAND.25)
+        z.1   = zero
     
-    15. ~k    = ~k.22
+     8. ~k    = ~k.22
         RAND  = RAND.26
-        SqnHSS
-              = (z.32⊕f5(~k.22, RAND.26))
-        SqnUE = (z.34⊕f5_star(~k.22, RAND.26))
-        z     = z.32
-        z.1   = z.34
-    
-    16. ~k    = ~k.23
-        RAND  = RAND.27
         SqnHSS
               = SqnHSS.28
-        SqnUE = (z.35⊕f5_star(~k.23, RAND.27))
-        z     = (SqnHSS.28⊕f5(~k.23, RAND.27))
-        z.1   = z.35
+        SqnUE = f5_star(~k.22, RAND.26)
+        z     = (SqnHSS.28⊕f5(~k.22, RAND.26))
+        z.1   = zero
+    
+     9. ~k    = ~k.22
+        RAND  = RAND.26
+        SqnHSS
+              = f5(~k.22, RAND.26)
+        SqnUE = SqnUE.29
+        z     = zero
+        z.1   = (SqnUE.29⊕f5_star(~k.22, RAND.26))
+    
+    10. ~k    = ~k.23
+        RAND  = RAND.27
+        SqnHSS
+              = f5(~k.23, RAND.27)
+        SqnUE = (z.36⊕f5_star(~k.23, RAND.27))
+        z     = zero
+        z.1   = z.36
+    
+    11. ~k    = ~k.23
+        RAND  = RAND.27
+        SqnHSS
+              = zero
+        SqnUE = (z.36⊕f5_star(~k.23, RAND.27))
+        z     = f5(~k.23, RAND.27)
+        z.1   = z.36
+    
+    12. ~k    = ~k.23
+        RAND  = RAND.27
+        SqnHSS
+              = (z.34⊕f5(~k.23, RAND.27))
+        SqnUE = f5_star(~k.23, RAND.27)
+        z     = z.34
+        z.1   = zero
+    
+    13. ~k    = ~k.23
+        RAND  = RAND.27
+        SqnHSS
+              = (z.34⊕f5(~k.23, RAND.27))
+        SqnUE = zero
+        z     = z.34
+        z.1   = f5_star(~k.23, RAND.27)
+    
+    14. ~k    = ~k.24
+        RAND  = RAND.28
+        SqnHSS
+              = (z.35⊕f5(~k.24, RAND.28))
+        SqnUE = SqnUE.31
+        z     = z.35
+        z.1   = (SqnUE.31⊕f5_star(~k.24, RAND.28))
+    
+    15. ~k    = ~k.24
+        RAND  = RAND.28
+        SqnHSS
+              = (z.35⊕f5(~k.24, RAND.28))
+        SqnUE = (z.37⊕f5_star(~k.24, RAND.28))
+        z     = z.35
+        z.1   = z.37
+    
+    16. ~k    = ~k.25
+        RAND  = RAND.29
+        SqnHSS
+              = SqnHSS.31
+        SqnUE = (z.38⊕f5_star(~k.25, RAND.29))
+        z     = (SqnHSS.31⊕f5(~k.25, RAND.29))
+        z.1   = z.38
     // loop breaker: [1]
   */
 
@@ -1987,7 +1914,7 @@ rule (modulo E) seaf_receive_aca:
    RcvS( idHN, ~idSN, <'aca', 'confirm', supi> )
    ]
   --[
-  Running( ~idSN, supi, <'UE', 'SEAF', 'K_seaf', K_seaf> ),
+  SEAF_End( ), Running( ~idSN, supi, <'UE', 'SEAF', 'K_seaf', K_seaf> ),
   Running( ~idSN, idHN, <'HSS', 'SEAF', 'supi', supi> ),
   Secret( <'SEAF', ~idSN>, 'key', K_seaf ),
   Secret( <'SEAF', ~idSN>, 'supi', supi ),
@@ -2073,6 +2000,10 @@ restriction subscribe_once:
 
 restriction greater_or_equal_than:
   "∀ x y #i. (Greater_Or_Equal_Than( x, y ) @ #i) ⇒ (¬(∃ z. (x++z) = y))"
+  // safety formula
+
+restriction Equality:
+  "∀ x y #i. (Equality( x, y ) @ #i) ⇒ (x = y)"
   // safety formula
 
 lemma dummy:
@@ -2275,69 +2206,85 @@ guarded formula characterizing all satisfying traces:
     #j = #k)"
 */
 simplify
-solve( St_2_SEAF( ~tid, idSN, <'5G', idSN>, conc_supi, ~idHN, RAND,
-                  HXRES_star,
-                  KDF(KDF(<
-                           f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                           f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                          <<'5G', idSN>, 
-                           (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                            (SqnUE++dif))
-                          >),
-                      <'5G', idSN>),
-                  ~sk_SN, pk(~sk_SN)
-       ) ▶₁ #i )
-  case seaf_receive_aia_send_authReq
-  solve( RcvS( ~idHN, ~idSN,
-               <'aia', 
-                <RAND, HXRES_star, 
-                 KDF(KDF(<
-                          f3(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN))), 
-                          f4(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))>,
-                         <<'5G', ~idSN>, 
-                          (f5(~k, adec(aenc(RAND, ~sk_SN), adec(aenc(pk(~sk_SN), ~sk_HN), pk_HN)))⊕
-                           (SqnUE++dif))
-                         >),
-                     <'5G', ~idSN>), 
-                 AUTN>, 
-                aenc(pk(~sk_SN), ~sk_HN.2)>
-         ) ▶₂ #vr )
-    case receive_secure
-    by contradiction /* from formulas */
+solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
+                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN)
+       ) ▶₀ #i )
+  case seaf_receive_authResp_send_ac
+  solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
+    case receive_secure_case_1
+    solve( RcvS( ~idHN, ~idSN,
+                 <'aia', <~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>, 
+                  aenc(pk(~sk_SN), ~sk_HN)>
+           ) ▶₃ #vr.1 )
+      case receive_secure_case_1
+      solve( RcvS( ~idSN, ~idHN,
+                   <'ac', 
+                    KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>), 
+                    <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, '5G', ~idSN>
+             ) ▶₁ #vr.8 )
+        case receive_secure_case_1
+        solve( RcvS( ~idSN, ~idHN,
+                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, pk(~sk_SN)
+                     >
+               ) ▶₁ #vr.9 )
+          case receive_secure_case_1
+          solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
+                 ) ▶₄ #vr.9 )
+            case add_subscription
+            solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                            <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
+                   ) @ #vk )
+              case ue_receive_authReq_freshness_success_send_authResp
+              solve( Sqn_UE( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
+                     ) ▶₁ #vr.17 )
+                case add_subscription
+                solve( !KU( f1(~k, <('1'++~sqn_root++dif), ~RAND>) ) @ #vk.10 )
+                  case seaf_receive_aia_send_authReq
+                  solve( !KU( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) @ #vk.10 )
+                    case coerce
+                    solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.2 )
+                      case seaf_receive_aia_send_authReq
+                      solve( RcvS( idHN.1, ~idSN.1,
+                                   <'aia', <RAND.1, HXRES_star, K_seaf, AUTN>, aenc(pk(~sk_SN.1), sk_HN.1)>
+                             ) ▶₃ #vr.22 )
+                        case receive_secure_case_1
+                        solve( (#vl.1, 0) ~~> (#vk.2, 0) )
+                          case d_0_snd
+                          solve( (#vr.19, 0) ~~> (#vk.2, 0) )
+                            case d_0_fst
+                            solve( (#vr.20, 0) ~~> (#vk.2, 0) )
+                              case d_0_fst
+                              solve( (#vr.22, 0) ~~> (#vk.2, 0) )
+                                case Xor
+                                solve( !KU( aenc(<~supi, ~R>, pk(~sk_HN)) ) @ #vk.7 )
+                                  case ue_send_attachReq
+                                  solve( !KU( ~idHN ) @ #vk.8 )
+                                    case init_homeNet
+                                    solve( !KU( ~RAND ) @ #vk.10 )
+                                      case seaf_receive_aia_send_authReq
+                                      solve( !KU( ~idSN ) @ #vk.14 )
+                                        case init_servNet
+                                        SOLVED // trace found
+                                      qed
+                                    qed
+                                  qed
+                                qed
+                              qed
+                            qed
+                          qed
+                        qed
+                      qed
+                    qed
+                  qed
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
   qed
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_01
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_02
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_03
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_04
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_05
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_06
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_07
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_08
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_09
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_10
-  by contradiction /* cyclic */
-next
-  case ue_receive_authReq_freshness_success_send_authResp_case_11
-  by contradiction /* cyclic */
 qed
 
 lemma executability_keyConf_honest:
@@ -4090,7 +4037,18 @@ by sorry
 
 
 
-/* All wellformedness checks were successful. */
+
+
+/*
+WARNING: the following wellformedness checks failed!
+
+Restriction actions
+===================
+
+  restriction `Equality' references action 
+    fact "Equality" (arity 2, Linear) 
+  but no rule has such an action.
+*/
 
 /*
 Generated from:
@@ -4107,7 +4065,10 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 5.85s
+  processing time: 24.23s
+  
+  WARNING: 1 wellformedness check failed!
+           The analysis results might be wrong!
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4117,7 +4078,7 @@ analyzed: 5G_AKA_test.spthy
   sqn_hss_src (all-traces): analysis incomplete (1 steps)
   sqn_ue_nodecrease (all-traces): analysis incomplete (1 steps)
   sqn_ue_unique (all-traces): analysis incomplete (1 steps)
-  executability_honest (exists-trace): falsified - no trace found (15 steps)
+  executability_honest (exists-trace): verified (22 steps)
   executability_keyConf_honest (exists-trace): analysis incomplete (1 steps)
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)

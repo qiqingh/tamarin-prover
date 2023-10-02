@@ -141,7 +141,9 @@ functions:
 
     // 3GPP KDFs (TS 33.501)
     KDF/2,   // KDF      --> K_ausf, K_seaf, XRES*
-    SHA256/2 // KDF      --> HXRES*
+    SHA256/2, // KDF      --> HXRES*
+
+    get_RAND/2 // take the RAND from the  SKSN_encrypt_RAND and SKHN_encrypt_PKS
 
 tactic: sqn_many
 presort: C
@@ -1597,6 +1599,7 @@ rule ue_send_attachReq:
         Start_UE_Session(~supi)
     ]->
     [
+        // St_1_UE(~tid, ~supi, ~idHN, ~idSN, ~k, ~sqn_root, pk_HN),
         St_1_UE(~tid, ~supi, ~idHN, ~idSN, ~k, ~sqn_root, pk_HN),
         Out(msg)
     ]
@@ -1714,20 +1717,27 @@ rule seaf_receive_aia_send_authReq:
 
         msgIn = < 5G_AV, SKHN_encrypt_PKSN >
 
-        SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
+        // SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
 
         // msgOut = < RAND, AUTN, SNID >
-        msgOut = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+        msgOut = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+
+        // msgOut = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN, f1(RAND, 'SEAF')>
+
+        // RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
 
         in
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
         // Fr(~RAND),
-        // !Pk(~idSN, ~pk_SN),
+        !Pk(~idSN, pk(~sk_SN)),
         !Pk(idHN, pk(sk_HN)),
-        RcvS(idHN, ~idSN, <'aia', msgIn>)
+        RcvS(idHN, ~idSN, <'aia', msgIn>),
     ]
     --[
+        //restriction
+        // Equality(RAND, RAND_derive),
+        // SEAF_End(),
         // Open chains
         Out_Src(RAND, AUTN),
         // Security properties
@@ -1737,7 +1747,37 @@ rule seaf_receive_aia_send_authReq:
         St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
         // St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, SKSN_encrypt_RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
         Out(msgOut)
+        // Out(f1(RAND, 'SEAF'))
     ]
+
+
+// Here add the implicit authentication 'get RAND_derive equals to RAND in SEAF' than the UE authenticate the SN with the help of HN
+// rule ue_check_RAND:
+    // let
+    //     5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
+
+    //     SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
+
+    //     SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
+
+    //     msgIn = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+
+    //     RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
+
+    // in
+    // [
+    //     St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+    //     St_0_UE(~tid, ~supi, idHN, ~idSN, ~k, ~sqn_root, pk_HN),
+    //     In(msgIn)
+    // ]
+    // --[
+    //     // Equality(RAND, RAND_derive),
+    //     SEAF_End()
+    // ]->
+    // [   
+    //     St_1_UE(~tid, ~supi, idHN, ~idSN, ~k, ~sqn_root, pk_HN, RAND)
+    // ]
+
 
 
 // Authentication Request (Auth-Req) + Authentication Response (Auth-Resp)
@@ -1759,45 +1799,54 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         // if add the derivation of SKSN_encrypt_RAND, SKHN_encrypt_PKSN, the RAND come from nowhere
         // here if Fr a RAND than the executability get failed 2 steps
         // here is add the St_2_SEAF in both premise and conclusion than the executability get failed 15 steps 
+        // total should be 23 steps
 
-        SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
-        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
+        // SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
 
+        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
 
-        PKSN_derive = adec(SKHN_encrypt_PKSN, pk_HN)
-        RAND_derive = adec(SKSN_encrypt_RAND, PKSN_derive)
+        // PKSN_derive = adec(SKHN_encrypt_PKSN, pk(~sk_SN))
+        // RAND_derive = adec(SKSN_encrypt_RAND, PKSN_derive)
 
-        AK = f5(~k, RAND_derive)
-        MAC = f1(~k, <SqnHSS, RAND_derive>) // check on the MAC
+        // RAND_derive = adec(aenc(RAND, ~sk_SN), adec(SKHN_encrypt_PKSN, pk(~sk_SN)))
+
+        // RAND = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
+
+        AK = f5(~k, RAND)
+        MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
         AUTN = <SqnHSS XOR AK, MAC>
 
-        msgIn = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN>
+        // RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
+
+        msgIn = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
 
 
         // Output
-        RES = f2(~k, RAND_derive)
-        IK = f4(~k, RAND_derive)
-        CK = f3(~k, RAND_derive)
-        RES_star = KDF(<CK, IK>, <SNID, RES, RAND_derive>)
+        RES = f2(~k, RAND)
+        IK = f4(~k, RAND)
+        CK = f3(~k, RAND)
+        RES_star = KDF(<CK, IK>, <SNID, RES, RAND>)
         K_seaf = KDF(KDF(<CK, IK>, <SNID, SqnHSS XOR AK>), SNID)
         msgOut = RES_star
     in
     [
+        // St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         St_1_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN),
         // St_2_SEAF(~tid, idSN, SNID, conc_supi, ~idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         // Fr(~RAND),
-        !Pk(idSN, pk(~sk_SN)),
-        !Pk(~idHN, pk(~sk_HN)),
+        // !Pk(idSN, pk(~sk_SN)),
+        // !Pk(~idHN, pk(~sk_HN)),
         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
         In(msgIn)
+        // In(f1(RAND, 'SEAF'))
     ]
     --[
-        SEAF_End(),
+        // SEAF_End(),
         // Open chains
         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
 
         // Restriction
-        // Equality(),
+        // Equality(f1(RAND_derive, 'UE'), f1(RAND, 'SEAF')),
 
         // Helper lemmas
         Sqn_UE_Change(~supi, ~idHN, SqnHSS),
@@ -1825,11 +1874,31 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Honest(idSN)        
     ]->
     [
+       // St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
         // St_2_SEAF(~tid, idSN, SNID, conc_supi, ~idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
         Out(msgOut),
         Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)
     ]
+
+
+// rule UE_RAND_check:
+//     [
+//         St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN, RAND),
+//         In(f1(RAND, 'SEAF'))
+//     ]
+//     --[]->
+//     [
+//         Out(f1(RAND, 'UE'))
+//     ]
+
+// rule SEAF_RAND_confirmation:
+//     [
+//         St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+//         In(f1(RAND, 'UE'))
+//     ]
+//     --[]->
+//     []
 
 // original 
 
@@ -1907,7 +1976,8 @@ rule ue_receive_authReq_fail_freshness_send_sync_failure:
         MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
         AUTN = <SqnHSS XOR AK, MAC>
         SNID = <'5G', idSN>
-        msgIn = < RAND, AUTN, SNID >
+        // msgIn = < RAND, AUTN, SNID >
+        msgIn = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
         // Output
         AKS = f5_star(~k, RAND)
         MACS = f1_star(~k, <SqnUE, RAND>)
@@ -2026,7 +2096,7 @@ rule seaf_receive_aca:
      RcvS(idHN, ~idSN, <'aca', msgIn>)]
     --[
         // Executability
-        // SEAF_End(),
+        SEAF_End(),
 
         // Security properties
         Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
