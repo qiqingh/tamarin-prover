@@ -1,6 +1,10 @@
 ##command useful
 tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_honest --derivcheck-timeout=0 5G_AKA_test.spthy > test.txt
 
+
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_resync --derivcheck-timeout=0 5G_AKA_test.spthy > test.txt
+
+
 executability_honest
 
 ssh qiqing@aisec.cse.buffalo.edu
@@ -14,6 +18,8 @@ scp ./5G_AKA_test.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin
 
 need to adapt the followings:
 
+
+####archive
 SN:
 	generate key pair <pk_SN, sk_SN>
 	acquire the signature from the HN sig_SN: aenc(pk_SN, sk_HN)
@@ -31,12 +37,29 @@ SN -> HN
 	send the signature 
 HN -> SN
 	send the aenc(pk_SN, sk_HN)
-SN -> HN
+SN -> UE
 	forward aenc(pk_SN, sk_HN)
 	send the aenc(RAND, sk_SN)
 UE:
 	use the stored pk_HN to decrypt the aenc(pk_SN, sk_HN) to get the verified pk_SN
 	use the pk_SN to decrypt the aenc(RAND, sk_SN) to get the RAND
+
+####
+SN:
+	generate key pair <pk_SN, sk_SN>
+	acquire the signature from the HN sig_SN
+
+UE:
+	also store the pk_HN
+
+SN -> HN 
+	send the signature 
+HN -> SN
+	verify signature
+SN -> UE
+	send the signature
+UE:
+	verify signature
 	
 
 
