@@ -126,8 +126,10 @@ theory 5G_aka
 
 begin
 
-builtins:
-    asymmetric-encryption, multiset, xor
+// builtins:
+//     asymmetric-encryption, multiset, xor
+builtins: 
+    asymmetric-encryption, multiset, xor, signing
 
 functions:
     // AKA functions (TS 33.102)
@@ -1456,6 +1458,7 @@ rule init_servNet:
     [   
         !SEAF_0(~idSN, SNID, ~sk_SN, pk(~sk_SN)), 
         !Pk(~idSN, pk(~sk_SN)),
+        Out(<~idSN, pk(~sk_SN)>),
         Out(SNID)
     ]
 
@@ -1495,15 +1498,19 @@ rule add_subscription:
 
 
 rule add_SN_register:
+    let
+        sig_SN = sign(pk(~sk_SN), ~sk_HN)
+    in
     [
         !SEAF_0(~idSN, SNID, ~sk_SN, pk(~sk_SN)),
         !HSS(~idHN, ~sk_HN)
     ]
     --[
+
         Register(~idSN, ~idHN),
     ]->
     [
-        !SEAF(~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN))
+        !SEAF(~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN), sig_SN)
     ]
 
 
@@ -1588,7 +1595,7 @@ rule ue_send_attachReq:
         !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
         !Pk(~idHN, pk_HN),
 
-        !SEAF(~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN)),
+        !SEAF(~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN), sig_SN),
 
         Fr(~R),
         Fr(~tid)
@@ -1611,12 +1618,12 @@ rule seaf_receive_attachReq_send_air:
     let
         suci = < conc_supi, idHN >
         // msg = < suci, SNID >
-        msg = < suci, SNID, pk_SN >
+        msg = < suci, SNID, pk(~sk_SN), sig_SN >
 
     in
     [
         // !SEAF(~idSN, SNID),
-        !SEAF(~idSN, SNID, idHN, ~sk_SN, pk_SN),
+        !SEAF(~idSN, SNID, idHN, ~sk_SN, pk_SN, sig_SN),
         !Pk(~idSN, pk_SN),
         Fr(~tid),
         In(suci)
@@ -1626,7 +1633,8 @@ rule seaf_receive_attachReq_send_air:
         Start_SEAF_Session(~idSN)
     ]->
     [
-        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN),
+        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN, sig_SN),
+        // SndS(~idSN, idHN, <'air', msg>)
         SndS(~idSN, idHN, <'air', msg>)
     ]
 
@@ -1641,7 +1649,7 @@ rule hss_receive_air_send_aia:
         suci = <conc_supi, ~idHN>
         SNID = <'5G', idSN> // HSS checks that the received SNID matches the authenticated channel with idSN
         // msgIn = <suci, SNID >
-        msgIn = < suci, SNID, pk_SN >
+        msgIn = < suci, SNID, pk(~sk_SN), sig_SN >
         SqnNext = SqnHSS + '1'
         
         // 2. Send
@@ -1659,7 +1667,7 @@ rule hss_receive_air_send_aia:
         HXRES_star = SHA256(XRES_star, ~RAND)
         5G_AV = < ~RAND, HXRES_star, K_seaf, AUTN >
 
-        SKHN_encrypt_PKSN = aenc(pk_SN, ~sk_HN)
+        SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
 
         // msgOut = 5G_AV
 
@@ -1670,8 +1678,8 @@ rule hss_receive_air_send_aia:
         !HSS(~idHN, ~sk_HN),
         RcvS(idSN, ~idHN, <'air', msgIn>),
 
-        !Pk(idSN, pk_SN),
-
+        !Pk(idSN, pk(~sk_SN)),
+        !Pk(~idHN, pk(~sk_HN)),
         !Ltk_Sym(~supi, ~idHN, ~k, ~sqn_root),
         Sqn_HSS(~supi, ~idHN, SqnHSS, ~sqn_root, count),
         Fr(~RAND),
@@ -1679,7 +1687,7 @@ rule hss_receive_air_send_aia:
         In(count)
     ]
     --[
-        // SEAF_End(),
+        Equality(verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true), 
         // Open chains
         Sqn_HSS_Invariance(~idHN, ~supi, SqnNext, ~sqn_root, count+'1'),
         Src(~RAND, AUTN),
@@ -1728,7 +1736,7 @@ rule seaf_receive_aia_send_authReq:
 
         in
     [
-        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN)),
+        St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN), sig_SN),
         // Fr(~RAND),
         !Pk(~idSN, pk(~sk_SN)),
         !Pk(idHN, pk(sk_HN)),
@@ -1744,7 +1752,7 @@ rule seaf_receive_aia_send_authReq:
         Running(~idSN, idHN, <'HSS','SEAF', <'K_seaf', K_seaf>>)
     ]->
     [
-        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
+        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN), 
         // St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, SKSN_encrypt_RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)), 
         Out(msgOut)
         // Out(f1(RAND, 'SEAF'))
@@ -2014,7 +2022,7 @@ rule seaf_receive_authResp_send_ac:
         msgOut = < RES_star, suci, SNID >
     in
     [
-        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN),
         In(RES_star)
     ]
     --[
@@ -2022,7 +2030,7 @@ rule seaf_receive_authResp_send_ac:
         Running(~idSN, idHN, <'HSS','SEAF', <'RES_star', RES_star>>)
     ]->
     [
-        St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN),
         SndS(~idSN, idHN, <'ac', msgOut>)
     ]
 
@@ -2039,7 +2047,7 @@ rule seaf_receive_syncFailure_send_authSync:
         out_msg = < RAND, AUTS >
     in
     [
-        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN),
         In(AUTS)
     ]
     -->
@@ -2092,7 +2100,7 @@ rule seaf_receive_aca:
         SNID = <'5G', ~idSN>
         msgIn = <'confirm', supi>
     in
-        [St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
+        [St_3_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN),
      RcvS(idHN, ~idSN, <'aca', msgIn>)]
     --[
         // Executability
@@ -2114,7 +2122,7 @@ rule seaf_receive_aca:
         Honest(~idSN)
     ]->
     [
-        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi, ~sk_SN, pk(~sk_SN)),
+        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi, ~sk_SN, pk(~sk_SN), sig_SN),
         Out(f1(K_seaf, 'SEAF'))
     ] // Key confimration message with UE
 
@@ -2171,7 +2179,7 @@ rule ue_key_confirmation:
 
 rule seaf_key_confirmation_check:
     [
-        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi , ~sk_SN, pk(~sk_SN)),
+        St_4_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf, supi , ~sk_SN, pk(~sk_SN), sig_SN),
         In(f1(K_seaf, 'UE'))
     ]
         --[
@@ -2198,8 +2206,8 @@ restriction subscribe_once:
 restriction greater_or_equal_than:
     " All x y #i. Greater_Or_Equal_Than(x,y)@i ==> not (Ex z. x + z = y) "
 
-// restriction Equality:
-//     "All x y #i. Equality(x,y) @#i ==> x = y"
+restriction equality:
+    "All x y #i. Equality(x,y) @#i ==> x = y"
 
 // Dummy lemma for timing info only.
 lemma dummy: "not(F)"

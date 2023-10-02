@@ -7,11 +7,13 @@ theory 5G_aka begin
 
 builtins: multiset, xor
 functions: KDF/2, SHA256/2, adec/2, aenc/2, f1/2, f1_star/2, f2/2, f3/2,
-           f4/2, f5/2, f5_star/2, fst/1, get_RAND/2, pair/2, pk/1, snd/1
+           f4/2, f5/2, f5_star/2, fst/1, get_RAND/2, pair/2, pk/1, sign/2, snd/1,
+           true/0, verify/3
 equations:
     adec(aenc(x.1, pk(x.2)), x.2) = x.1,
     fst(<x.1, x.2>) = x.1,
-    snd(<x.1, x.2>) = x.2
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
 
 tactic: sqn_many
 presort: C
@@ -1317,6 +1319,8 @@ prio: {id}
 
 
 
+
+
 rule (modulo E) send_secure:
    [ SndS( A, B, m ) ] --> [ Sec( A, B, m ) ]
 
@@ -1344,7 +1348,8 @@ rule (modulo E) init_servNet:
   --[ ServNet( ~idSN ) ]->
    [
    !SEAF_0( ~idSN, <'5G', ~idSN>, ~sk_SN, pk(~sk_SN) ),
-   !Pk( ~idSN, pk(~sk_SN) ), Out( <'5G', ~idSN> )
+   !Pk( ~idSN, pk(~sk_SN) ), Out( <~idSN, pk(~sk_SN)> ),
+   Out( <'5G', ~idSN> )
    ]
 
   /* has exactly the trivial AC variant */
@@ -1373,7 +1378,9 @@ rule (modulo E) add_subscription:
 rule (modulo E) add_SN_register:
    [ !SEAF_0( ~idSN, SNID, ~sk_SN, pk(~sk_SN) ), !HSS( ~idHN, ~sk_HN ) ]
   --[ Register( ~idSN, ~idHN ) ]->
-   [ !SEAF( ~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN) ) ]
+   [
+   !SEAF( ~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN) )
+   ]
 
   /* has exactly the trivial AC variant */
 
@@ -1420,7 +1427,8 @@ rule (modulo E) ue_sqn_increase:
 rule (modulo E) ue_send_attachReq:
    [
    !Ltk_Sym( ~supi, ~idHN, ~k, ~sqn_root ), !Pk( ~idHN, pk_HN ),
-   !SEAF( ~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN) ), Fr( ~R ), Fr( ~tid )
+   !SEAF( ~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN), sig_SN ), Fr( ~R ),
+   Fr( ~tid )
    ]
   --[ Start_UE_Session( ~supi ) ]->
    [
@@ -1432,13 +1440,13 @@ rule (modulo E) ue_send_attachReq:
 
 rule (modulo E) seaf_receive_attachReq_send_air:
    [
-   !SEAF( ~idSN, SNID, idHN, ~sk_SN, pk_SN ), !Pk( ~idSN, pk_SN ),
+   !SEAF( ~idSN, SNID, idHN, ~sk_SN, pk_SN, sig_SN ), !Pk( ~idSN, pk_SN ),
    Fr( ~tid ), In( <conc_supi, idHN> )
    ]
   --[ Start_SEAF_Session( ~idSN ) ]->
    [
-   St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN ),
-   SndS( ~idSN, idHN, <'air', <conc_supi, idHN>, SNID, pk_SN> )
+   St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN, sig_SN ),
+   SndS( ~idSN, idHN, <'air', <conc_supi, idHN>, SNID, pk(~sk_SN), sig_SN> )
    ]
 
   /* has exactly the trivial AC variant */
@@ -1447,13 +1455,16 @@ rule (modulo E) hss_receive_air_send_aia:
    [
    !HSS( ~idHN, ~sk_HN ),
    RcvS( idSN, ~idHN,
-         <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', idSN>, pk_SN>
+         <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', idSN>, 
+          pk(~sk_SN), sig_SN>
    ),
-   !Pk( idSN, pk_SN ), !Ltk_Sym( ~supi, ~idHN, ~k, ~sqn_root ),
+   !Pk( idSN, pk(~sk_SN) ), !Pk( ~idHN, pk(~sk_HN) ),
+   !Ltk_Sym( ~supi, ~idHN, ~k, ~sqn_root ),
    Sqn_HSS( ~supi, ~idHN, SqnHSS, ~sqn_root, count ), Fr( ~RAND ),
    Fr( ~tid ), In( count )
    ]
   --[
+  Equality( verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true ),
   Sqn_HSS_Invariance( ~idHN, ~supi, ('1'++SqnHSS), ~sqn_root, ('1'++count)
   ),
   Src( ~RAND,
@@ -1506,16 +1517,104 @@ rule (modulo E) hss_receive_air_send_aia:
                    <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
                <'5G', idSN>), 
            (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>, 
-          aenc(pk_SN, ~sk_HN)>
+          aenc(pk(~sk_SN), ~sk_HN)>
    )
    ]
 
-  // loop breakers: [1,4]
-  /* has exactly the trivial AC variant */
+  // loop breakers: [1,5]
+  /*
+  rule (modulo AC) hss_receive_air_send_aia:
+     [
+     !HSS( ~idHN, ~sk_HN ),
+     RcvS( idSN, ~idHN,
+           <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', idSN>, 
+            pk(~sk_SN), sig_SN>
+     ),
+     !Pk( idSN, pk(~sk_SN) ), !Pk( ~idHN, pk(~sk_HN) ),
+     !Ltk_Sym( ~supi, ~idHN, ~k, ~sqn_root ),
+     Sqn_HSS( ~supi, ~idHN, SqnHSS, ~sqn_root, count ), Fr( ~RAND ),
+     Fr( ~tid ), In( count )
+     ]
+    --[
+    Equality( z, true ),
+    Sqn_HSS_Invariance( ~idHN, ~supi, ('1'++SqnHSS), ~sqn_root, ('1'++count)
+    ),
+    Src( ~RAND,
+         <(f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>
+    ),
+    Start_HSS_Session( ~idHN ), HSS_Send_Aia( ),
+    Running( ~idHN, idSN,
+             <'SEAF', 'HSS', 'K_seaf', 
+              KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                      <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
+                  <'5G', idSN>)
+             >
+    ),
+    Running( ~idHN, idSN, <'SEAF', 'HSS', 'supi', ~supi> ),
+    Running( ~idHN, idSN,
+             <'SEAF', 'HSS', 'RES_star', 
+              KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>, <<'5G', idSN>, f2(~k, ~RAND), ~RAND>)
+             >
+    ),
+    Running( ~idHN, ~supi,
+             <'UE', 'HSS', 'K_seaf', 
+              KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                      <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
+                  <'5G', idSN>)
+             >
+    ),
+    Running( ~idHN, ~supi, <'UE', 'HSS', 'snname', idSN> ),
+    Running( ~idHN, ~supi, <'UE', 'HSS', 'supi', ~supi> ),
+    Running( ~idHN, ~supi,
+             <'UE', 'HSS', 'AUTN', (f5(~k, ~RAND)⊕('1'++SqnHSS)), 
+              f1(~k, <('1'++SqnHSS), ~RAND>)>
+    ),
+    Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+    ]->
+     [
+     St_1_HSS( ~tid, ~idHN, ~supi, <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>,
+               idSN, <'5G', idSN>, ~k, ('1'++SqnHSS),
+               KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                   <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
+               ~RAND, ~sqn_root, ~sk_HN
+     ),
+     Sqn_HSS( ~supi, ~idHN, ('1'++SqnHSS), ~sqn_root, ('1'++count) ),
+     SndS( ~idHN, idSN,
+           <'aia', 
+            <~RAND, 
+             SHA256(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                        <<'5G', idSN>, f2(~k, ~RAND), ~RAND>),
+                    ~RAND), 
+             KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                     <<'5G', idSN>, (f5(~k, ~RAND)⊕('1'++SqnHSS))>),
+                 <'5G', idSN>), 
+             (f5(~k, ~RAND)⊕('1'++SqnHSS)), f1(~k, <('1'++SqnHSS), ~RAND>)>, 
+            aenc(pk(~sk_SN), ~sk_HN)>
+     )
+     ]
+    variants (modulo AC)
+    1. ~sk_HN
+             = ~sk_HN.22
+       ~sk_SN
+             = ~sk_SN.23
+       sig_SN
+             = sign(pk(~sk_SN.23), ~sk_HN.22)
+       z     = true
+    
+    2. ~sk_HN
+             = ~sk_HN.29
+       ~sk_SN
+             = ~sk_SN.30
+       sig_SN
+             = sig_SN.37
+       z     = verify(sig_SN.37, pk(~sk_SN.30), pk(~sk_HN.29))
+    // loop breakers: [1,5]
+  */
 
 rule (modulo E) seaf_receive_aia_send_authReq:
    [
-   St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN) ),
+   St_1_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN), sig_SN
+   ),
    !Pk( ~idSN, pk(~sk_SN) ), !Pk( idHN, pk(sk_HN) ),
    RcvS( idHN, ~idSN,
          <'aia', <RAND, HXRES_star, K_seaf, AUTN>, aenc(pk(~sk_SN), sk_HN)>
@@ -1527,7 +1626,7 @@ rule (modulo E) seaf_receive_aia_send_authReq:
   ]->
    [
    St_2_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf,
-              ~sk_SN, pk(~sk_SN)
+              ~sk_SN, pk(~sk_SN), sig_SN
    ),
    Out( <RAND, AUTN, SNID, aenc(pk(~sk_SN), sk_HN)> )
    ]
@@ -1784,14 +1883,14 @@ rule (modulo E) ue_receive_authReq_fail_freshness_send_sync_failure:
 rule (modulo E) seaf_receive_authResp_send_ac:
    [
    St_2_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND,
-              SHA256(RES_star, RAND), K_seaf, ~sk_SN, pk(~sk_SN)
+              SHA256(RES_star, RAND), K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
    ),
    In( RES_star )
    ]
   --[ Running( ~idSN, idHN, <'HSS', 'SEAF', 'RES_star', RES_star> ) ]->
    [
    St_3_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND, RES_star, K_seaf,
-              ~sk_SN, pk(~sk_SN)
+              ~sk_SN, pk(~sk_SN), sig_SN
    ),
    SndS( ~idSN, idHN, <'ac', RES_star, <conc_supi, idHN>, SNID> )
    ]
@@ -1801,7 +1900,7 @@ rule (modulo E) seaf_receive_authResp_send_ac:
 rule (modulo E) seaf_receive_syncFailure_send_authSync:
    [
    St_2_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf,
-              ~sk_SN, pk(~sk_SN)
+              ~sk_SN, pk(~sk_SN), sig_SN
    ),
    In( <SqnUEXorAKS, MACS> )
    ]
@@ -1909,7 +2008,7 @@ rule (modulo E) hss_receive_ac_send_aca:
 rule (modulo E) seaf_receive_aca:
    [
    St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND, RES_star,
-              K_seaf, ~sk_SN, pk(~sk_SN)
+              K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
    ),
    RcvS( idHN, ~idSN, <'aca', 'confirm', supi> )
    ]
@@ -1928,7 +2027,7 @@ rule (modulo E) seaf_receive_aca:
   ]->
    [
    St_4_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND, RES_star,
-              K_seaf, supi, ~sk_SN, pk(~sk_SN)
+              K_seaf, supi, ~sk_SN, pk(~sk_SN), sig_SN
    ),
    Out( f1(K_seaf, 'SEAF') )
    ]
@@ -1977,7 +2076,7 @@ rule (modulo E) ue_key_confirmation:
 rule (modulo E) seaf_key_confirmation_check:
    [
    St_4_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star, K_seaf,
-              supi, ~sk_SN, pk(~sk_SN)
+              supi, ~sk_SN, pk(~sk_SN), sig_SN
    ),
    In( f1(K_seaf, 'UE') )
    ]
@@ -2002,7 +2101,7 @@ restriction greater_or_equal_than:
   "∀ x y #i. (Greater_Or_Equal_Than( x, y ) @ #i) ⇒ (¬(∃ z. (x++z) = y))"
   // safety formula
 
-restriction Equality:
+restriction equality:
   "∀ x y #i. (Equality( x, y ) @ #i) ⇒ (x = y)"
   // safety formula
 
@@ -2207,7 +2306,7 @@ guarded formula characterizing all satisfying traces:
 */
 simplify
 solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
-                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN)
+                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
        ) ▶₀ #i )
   case seaf_receive_authResp_send_ac
   solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
@@ -2225,12 +2324,12 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
              ) ▶₁ #vr.8 )
         case receive_secure_case_1
         solve( RcvS( ~idSN, ~idHN,
-                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, pk(~sk_SN)
-                     >
+                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, 
+                      pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN)>
                ) ▶₁ #vr.9 )
           case receive_secure_case_1
           solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                 ) ▶₄ #vr.9 )
+                 ) ▶₅ #vr.9 )
             case add_subscription
             solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
                             <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
@@ -2264,7 +2363,7 @@ solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
                                     solve( !KU( ~RAND ) @ #vk.10 )
                                       case seaf_receive_aia_send_authReq
                                       solve( !KU( ~idSN ) @ #vk.14 )
-                                        case init_servNet
+                                        case init_servNet_case_1
                                         SOLVED // trace found
                                       qed
                                     qed
@@ -4039,16 +4138,13 @@ by sorry
 
 
 
-/*
-WARNING: the following wellformedness checks failed!
 
-Restriction actions
-===================
 
-  restriction `Equality' references action 
-    fact "Equality" (arity 2, Linear) 
-  but no rule has such an action.
-*/
+
+
+
+
+/* All wellformedness checks were successful. */
 
 /*
 Generated from:
@@ -4065,10 +4161,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 24.23s
-  
-  WARNING: 1 wellformedness check failed!
-           The analysis results might be wrong!
+  processing time: 25.42s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
