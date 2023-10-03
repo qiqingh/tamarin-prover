@@ -1,5 +1,5 @@
 ##command useful
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_honest --derivcheck-timeout=0 5G_AKA_test.spthy > executability_honest.txt
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_keyConf_honest --derivcheck-timeout=0 5G_AKA_test.spthy > executability_keyConf_honest.txt
 
 executability_honest
 executability_keyConf_honest

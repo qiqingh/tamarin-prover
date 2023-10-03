@@ -1484,6 +1484,7 @@ rule (modulo E) hss_receive_air_send_aia:
             KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>, <<'5G', idSN>, f2(~k, ~RAND), ~RAND>)
            >
   ),
+  Running( ~idHN, idSN, <'SEAF', 'HSS', 'PK_SN', pk(~sk_SN)> ),
   Running( ~idHN, ~supi,
            <'UE', 'HSS', 'K_seaf', 
             KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
@@ -1554,6 +1555,7 @@ rule (modulo E) hss_receive_air_send_aia:
               KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>, <<'5G', idSN>, f2(~k, ~RAND), ~RAND>)
              >
     ),
+    Running( ~idHN, idSN, <'SEAF', 'HSS', 'PK_SN', pk(~sk_SN)> ),
     Running( ~idHN, ~supi,
              <'UE', 'HSS', 'K_seaf', 
               KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
@@ -1664,6 +1666,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
   ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
+  Running( ~supi, ~idHN, <'HSS', 'UE', 'RAND', RAND> ),
   Secret( <'UE', ~supi>, 'key',
           KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
                   <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
@@ -1690,7 +1693,8 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
                <'5G', idSN>)
           >
   ),
-  Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+  Commit( ~supi, idSN, <'UE', 'SEAF', 'RAND', RAND> ), Honest( ~supi ),
+  Honest( ~idHN ), Honest( idSN )
   ]->
    [
    St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
@@ -1743,6 +1747,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
     ),
     Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
     Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
+    Running( ~supi, ~idHN, <'HSS', 'UE', 'RAND', RAND> ),
     Secret( <'UE', ~supi>, 'key',
             KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
                     <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
@@ -1769,7 +1774,8 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
                  <'5G', idSN>)
             >
     ),
-    Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+    Commit( ~supi, idSN, <'UE', 'SEAF', 'RAND', RAND> ), Honest( ~supi ),
+    Honest( ~idHN ), Honest( idSN )
     ]->
      [
      St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
@@ -2753,91 +2759,7 @@ guarded formula characterizing all satisfying traces:
    ⇒
     #j = #k)"
 */
-simplify
-solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
-                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
-       ) ▶₀ #i )
-  case seaf_receive_authResp_send_ac
-  solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
-    case receive_secure_case_1
-    solve( RcvS( ~idHN, ~idSN,
-                 <'aia', ~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>
-           ) ▶₂ #vr.1 )
-      case receive_secure_case_1
-      solve( RcvS( ~idSN, ~idHN,
-                   <'ac', 
-                    KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>), 
-                    <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, '5G', ~idSN>
-             ) ▶₁ #vr.8 )
-        case receive_secure_case_1
-        solve( RcvS( ~idSN, ~idHN,
-                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, 
-                      pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN)>
-               ) ▶₁ #vr.9 )
-          case receive_secure_case_1
-          solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                 ) ▶₅ #vr.9 )
-            case add_subscription
-            solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                            <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
-                   ) @ #vk )
-              case ue_receive_authReq_freshness_success_send_authResp
-              solve( Sqn_UE( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                     ) ▶₃ #vr.17 )
-                case add_subscription
-                solve( !KU( f1(~k, <('1'++~sqn_root++dif), ~RAND>) ) @ #vk.10 )
-                  case seaf_receive_aia_send_authReq
-                  solve( !KU( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) @ #vk.10 )
-                    case coerce
-                    solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.2 )
-                      case seaf_receive_aia_send_authReq
-                      solve( RcvS( idHN.1, ~idSN.1, <'aia', RAND.1, HXRES_star, K_seaf, AUTN>
-                             ) ▶₂ #vr.22 )
-                        case receive_secure_case_1
-                        solve( (#vl.1, 0) ~~> (#vk.2, 0) )
-                          case d_0_snd
-                          solve( (#vr.19, 0) ~~> (#vk.2, 0) )
-                            case d_0_fst
-                            solve( (#vr.20, 0) ~~> (#vk.2, 0) )
-                              case d_0_fst
-                              solve( (#vr.22, 0) ~~> (#vk.2, 0) )
-                                case Xor
-                                solve( !KU( aenc(<~supi, ~R>, pk(~sk_HN)) ) @ #vk.7 )
-                                  case ue_send_attachReq
-                                  solve( !KU( ~idHN ) @ #vk.8 )
-                                    case init_homeNet
-                                    solve( !KU( ~RAND ) @ #vk.10 )
-                                      case seaf_receive_aia_send_authReq
-                                      solve( !KU( ~idSN ) @ #vk.14 )
-                                        case init_servNet_case_1
-                                        solve( !KU( sign(pk(~sk_SN), ~sk_HN) ) @ #vk.17 )
-                                          case seaf_receive_aia_send_authReq
-                                          solve( !KU( pk(~sk_SN) ) @ #vk.17 )
-                                            case init_servNet
-                                            SOLVED // trace found
-                                          qed
-                                        qed
-                                      qed
-                                    qed
-                                  qed
-                                qed
-                              qed
-                            qed
-                          qed
-                        qed
-                      qed
-                    qed
-                  qed
-                qed
-              qed
-            qed
-          qed
-        qed
-      qed
-    qed
-  qed
-qed
+by sorry
 
 lemma executability_keyConf_honest:
   exists-trace
@@ -2892,7 +2814,103 @@ guarded formula characterizing all satisfying traces:
    ⇒
     #j = #k)"
 */
-by sorry
+simplify
+solve( St_4_SEAF( ~tid, ~idSN, SNID, conc_supi, idHN, ~RAND, RES_star,
+                  K_seaf, supi, ~sk_SN, pk(~sk_SN), sig_SN
+       ) ▶₀ #i )
+  case seaf_receive_aca_case_1
+  solve( RcvS( ~idHN, ~idSN,
+               <'aia', ~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>
+         ) ▶₂ #vr.3 )
+    case receive_secure_case_1
+    solve( !KU( f1(KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                           <<'5G', ~idSN>, (f5(~k, ~RAND)⊕('1'++~sqn_root++count))>),
+                       <'5G', ~idSN>),
+                   'UE')
+           ) @ #vk )
+      case ue_key_confirmation_case_05
+      solve( RcvS( ~idSN, ~idHN,
+                   <'ac', 
+                    KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>), 
+                    <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, '5G', ~idSN>
+             ) ▶₁ #vr.7 )
+        case receive_secure_case_1
+        solve( !KU( aenc(<~supi, ~R>, pk(~sk_HN)) ) @ #vk.3 )
+          case ue_send_attachReq
+          solve( RcvS( ~idSN, ~idHN,
+                       <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, 
+                        pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN)>
+                 ) ▶₁ #vr.9 )
+            case receive_secure_case_1
+            solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
+                   ) ▶₅ #vr.9 )
+              case add_subscription
+              solve( Sqn_UE( ~supi, ~idHN, ('1'++~sqn_root), ~sqn_root, '1'
+                     ) ▶₃ #vr.15 )
+                case add_subscription
+                solve( !KU( ~idHN ) @ #vk.4 )
+                  case init_homeNet
+                  solve( !KU( ~RAND ) @ #vk.8 )
+                    case seaf_receive_aia_send_authReq
+                    solve( !KU( ~idSN ) @ #vk.16 )
+                      case init_servNet_case_1
+                      solve( !KU( sign(pk(~sk_SN), ~sk_HN) ) @ #vk.19 )
+                        case seaf_receive_aia_send_authReq
+                        solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
+                               ) @ #vk.9 )
+                          case ue_receive_authReq_freshness_success_send_authResp
+                          solve( !KU( f1(KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                                                 <<'5G', ~idSN>, (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root))>),
+                                             <'5G', ~idSN>),
+                                         'SEAF')
+                                 ) @ #vk.13 )
+                            case seaf_receive_aca
+                            solve( !KU( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) @ #vk.16 )
+                              case coerce
+                              solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.8 )
+                                case seaf_receive_aia_send_authReq
+                                solve( (#vl.7, 0) ~~> (#vk.8, 0) )
+                                  case d_0_snd
+                                  solve( (#vr.30, 0) ~~> (#vk.8, 0) )
+                                    case d_0_fst
+                                    solve( St_1_SEAF( ~tid.3, ~idSN.1, SNID, conc_supi, idHN.1, ~sk_SN.1,
+                                                      pk(~sk_SN.1), sig_SN
+                                           ) ▶₀ #vr.29 )
+                                      case seaf_receive_attachReq_send_air
+                                      solve( (#vr.29, 0) ~~> (#vk.8, 0) )
+                                        case d_0_fst
+                                        solve( (#vr.30, 0) ~~> (#vk.8, 0) )
+                                          case Xor
+                                          solve( !KU( f1(~k, <('1'++'1'++~sqn_root), ~RAND>) ) @ #vk.17 )
+                                            case seaf_receive_aia_send_authReq
+                                            solve( !KU( pk(~sk_SN) ) @ #vk.19 )
+                                              case init_servNet
+                                              SOLVED // trace found
+                                            qed
+                                          qed
+                                        qed
+                                      qed
+                                    qed
+                                  qed
+                                qed
+                              qed
+                            qed
+                          qed
+                        qed
+                      qed
+                    qed
+                  qed
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
 
 lemma executability_desync [heuristic={tactic_7}]:
   exists-trace
@@ -4622,7 +4640,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 28.10s
+  processing time: 79.53s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4632,8 +4650,8 @@ analyzed: 5G_AKA_test.spthy
   sqn_hss_src (all-traces): analysis incomplete (1 steps)
   sqn_ue_nodecrease (all-traces): analysis incomplete (1 steps)
   sqn_ue_unique (all-traces): analysis incomplete (1 steps)
-  executability_honest (exists-trace): verified (24 steps)
-  executability_keyConf_honest (exists-trace): analysis incomplete (1 steps)
+  executability_honest (exists-trace): analysis incomplete (1 steps)
+  executability_keyConf_honest (exists-trace): verified (25 steps)
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)
   weakagreement_ue_seaf_noRev (all-traces): analysis incomplete (1 steps)

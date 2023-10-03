@@ -1700,6 +1700,10 @@ rule hss_receive_air_send_aia:
         Running(~idHN, idSN,<'SEAF','HSS',<'K_seaf', K_seaf>>),
         Running(~idHN, idSN,<'SEAF','HSS',<'supi', ~supi>>),
         Running(~idHN, idSN,<'SEAF','HSS',<'RES_star', XRES_star>>),
+
+        // %% add the security property 'SEAF','HSS' to check
+        Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
+
         Running(~idHN, ~supi,<'UE','HSS', <'K_seaf', K_seaf>>),
         Running(~idHN, ~supi,<'UE','HSS', <'snname', idSN>>),
         Running(~idHN, ~supi,<'UE','HSS',<'supi', ~supi>>),
@@ -1903,7 +1907,7 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Running(~supi, ~idHN, <'HSS','UE', <'K_seaf', K_seaf>>),
         Running(~supi, ~idHN, <'HSS','UE', <'snname', idSN>>),
         Running(~supi, ~idHN, <'HSS','UE', <'supi', ~supi>>),
-        // Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
+        Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
         Secret(<'UE', ~supi>, 'key', K_seaf),
         Secret(<'UE', ~supi>, 'supi', ~supi),
         Secret(<'UE', ~supi>, 'k', ~k),
@@ -1912,7 +1916,7 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Commit(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
         Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
-        // Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+        Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
         Honest(~supi),
         Honest(~idHN),
         Honest(idSN)        
@@ -2151,9 +2155,11 @@ rule seaf_receive_aca:
         Running(~idSN, idHN,<'HSS','SEAF',<'supi', supi>>),
         Secret(<'SEAF', ~idSN>, 'key', K_seaf),
         Secret(<'SEAF', ~idSN>, 'supi', supi),
+
         Commit(~idSN, idHN, <'SEAF','HSS', <'K_seaf', K_seaf>>),
         Commit(~idSN, idHN, <'SEAF','HSS', <'supi', supi>>),
         Commit(~idSN, idHN, <'SEAF','HSS', <'RES_star', RES_star>>),
+
         Commit(~idSN, supi, <'SEAF','UE', <'K_seaf', K_seaf>>),
         Commit(~idSN, supi, <'SEAF','UE', <'supi', supi>>),
         Commit(~idSN, supi, <'SEAF','UE', <'RES_star', RES_star>>),
@@ -2242,6 +2248,10 @@ rule seaf_key_confirmation_check:
 
 restriction subscribe_once:
     " All HN1 HN2 supi #i #j. Subscribe(supi, HN1)@i & Subscribe(supi, HN2)@j ==> (#i = #j & HN1 = HN2)"
+
+// Register(~idSN, ~idHN),
+restriction register_once:
+    " All HN1 HN2 SN #i #j. Register(SN, HN1)@i & Register(SN, HN2)@j ==> (#i = #j & HN1 = HN2)"
 
 restriction greater_or_equal_than:
     " All x y #i. Greater_Or_Equal_Than(x,y)@i ==> not (Ex z. x + z = y) "
@@ -2355,6 +2365,8 @@ lemma executability_keyConf_honest:
                       HomeNet(HN2)@k ==> #j = #k)
         & (All S1 S2 HN1 HN2 #j #k. Subscribe(S1, HN1)@j &
                         Subscribe(S2, HN2)@k ==> #j = #k)
+        & (All S1 S2 HN1 HN2 #j #k. Register(S1, HN1)@j &
+                        Register(S2, HN2)@k ==> #j = #k)
         & (All SNID1 SNID2 #j #k. Start_SEAF_Session(SNID1)@j &
                           Start_SEAF_Session(SNID2)@k ==> #j = #k) 
         & (All UE1 UE2 #j #k. Start_UE_Session(UE1)@j &
@@ -2374,6 +2386,8 @@ lemma executability_desync[heuristic={tactic_7}]:
                       HomeNet(HN2)@k ==> #j = #k)
         & (All S1 S2 HN1 HN2 #j #k. Subscribe(S1, HN1)@j &
                         Subscribe(S2, HN2)@k ==> #j = #k)
+        & (All S1 S2 HN1 HN2 #j #k. Register(S1, HN1)@j &
+                        Register(S2, HN2)@k ==> #j = #k)
         & (All SNID1 SNID2 #j #k. Start_SEAF_Session(SNID1)@j &
                           Start_SEAF_Session(SNID2)@k ==> #j = #k) 
         & (All UE1 UE2 #j #k. Start_UE_Session(UE1)@j &
@@ -2694,7 +2708,7 @@ lemma weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev [heuristic=
         | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)
         | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
         | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
-            | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
 
 // proof (automatic) (~1 sec)
 lemma noninjectiveagreement_seaf_hss_kseaf_noChanRev [heuristic={tactic_5}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
