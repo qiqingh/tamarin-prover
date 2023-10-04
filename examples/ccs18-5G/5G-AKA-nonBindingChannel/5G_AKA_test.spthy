@@ -1603,7 +1603,9 @@ rule ue_send_attachReq:
     --[ 
         
         // Executability
-        Start_UE_Session(~supi)
+        Start_UE_Session(~supi),
+        // %% add aditional authentication property check
+        Running(~idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
     ]->
     [
         // St_1_UE(~tid, ~supi, ~idHN, ~idSN, ~k, ~sqn_root, pk_HN),
@@ -1630,7 +1632,10 @@ rule seaf_receive_attachReq_send_air:
     ]
     --[
         // Executability
-        Start_SEAF_Session(~idSN)
+        Start_SEAF_Session(~idSN),
+
+        // %% add aditional authentication property check
+        // Running(idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
     ]->
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN, sig_SN),
@@ -1702,7 +1707,7 @@ rule hss_receive_air_send_aia:
         Running(~idHN, idSN,<'SEAF','HSS',<'RES_star', XRES_star>>),
 
         // %% add the security property 'SEAF','HSS' to check
-        Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
+        // Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
 
         Running(~idHN, ~supi,<'UE','HSS', <'K_seaf', K_seaf>>),
         Running(~idHN, ~supi,<'UE','HSS', <'snname', idSN>>),
@@ -1900,6 +1905,9 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Sqn_UE_Change(~supi, ~idHN, SqnHSS),
         Sqn_UE_Use(~supi, ~idHN, SqnHSS),
 
+        // %% add aditional authentication property to check
+        Commit(~supi, idSN, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>),
+
         // Security properties
         Running(~supi, idSN,<'SEAF','UE',<'RES_star', RES_star>>),
         Running(~supi, idSN,<'SEAF','UE',<'K_seaf', K_seaf>>),
@@ -1915,8 +1923,11 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Commit(~supi, ~idHN, <'UE','HSS',<'supi', ~supi>>),
         Commit(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
-        Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
-        Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+
+        // %% comment out temp
+        // Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
+        // Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+
         Honest(~supi),
         Honest(~idHN),
         Honest(idSN)        
@@ -2151,8 +2162,11 @@ rule seaf_receive_aca:
         SEAF_End(),
 
         // Security properties
-        Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
+        // %% comment out temp
+        // Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
+
         Running(~idSN, idHN,<'HSS','SEAF',<'supi', supi>>),
+
         Secret(<'SEAF', ~idSN>, 'key', K_seaf),
         Secret(<'SEAF', ~idSN>, 'supi', supi),
 
@@ -2448,6 +2462,16 @@ lemma weakagreement_ue_seaf_noRev [heuristic={weakagreement_ue_seaf_noRev}, hide
             ==> (Ex t2 #j. Running(b, a, t2)@j)
                 | (Ex X data #r. Rev(X,data)@r & Honest(X)@i) "
 
+// %% add additional lemma for {UE, SEAF} authentication prove
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
 /********************************************/
 /*     Agreement UE -> SEAF (after KC)      */
 /********************************************/
@@ -2469,7 +2493,7 @@ lemma weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev [heuristic={
         | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
         | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
         | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
-            | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
 
 /*
 NOTE: This lemma is violated as consequence of violation on cleanAttack_injectiveagreement_ue_hss_supi_noRev

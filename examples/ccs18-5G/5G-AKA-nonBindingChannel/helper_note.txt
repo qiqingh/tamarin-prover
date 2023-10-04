@@ -1,5 +1,5 @@
 ##command useful
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_keyConf_honest --derivcheck-timeout=0 5G_AKA_test.spthy > executability_keyConf_honest.txt
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev --derivcheck-timeout=0 5G_AKA_test.spthy > weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.txt
 
 executability_honest
 executability_keyConf_honest
@@ -7,18 +7,61 @@ executability_desync
 executability_resync
 
 
+#########################################################
+Since encrypt RAND from HN to SN and on UE is not easy to model, how about we combine the SN and the HN.
+
+If we resume the assumption of secure channel, than the SN and HN can be one entity.
 
 
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=executability_resync --derivcheck-timeout=0 5G_AKA_test.spthy > test.txt
 
 
-executability_honest
+#########################################################
+aliveness, which only ensures that B has been running the protocol previously, but not necessarily with A;
 
+weak agreement, which ensures that B has previously been running the protocol with A, but not necessarily with the same data
+
+non-injective agreement, which ensures
+that B has been running the protocol with A and both agree on the
+data
+
+injective agreement, which additionally ensures that for each run of the protocol of an agent there is a unique matching run of the other agent, and prevents replay attacks.
+
+
+#########################################################
+weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
+
+rule ue_send_attachReq
+	Running(idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
+rule ue_receive_authReq_freshness_success_send_authResp
+	Commit(~supi, idSN, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
+
+	Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
+	Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+
+
+
+#########################################################
+concern the authentication of an agent in role 'B' to an agent in role 'A'. 
+
+Commit(a,b,<'A','B',t>) 
+Running(b,a,<'A','B',t>)
+
+Commit(~idSN, idHN,<'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>)
+
+
+Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>)
+
+First Running, than Commit
+
+
+
+
+#########################################################
 ssh qiqing@aisec.cse.buffalo.edu
 
 
 scp ./5G_AKA_test.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin-prover/examples/ccs18-5G/5G-AKA-nonBindingChannel/
-
+#########################################################
 
 
 ##thoughts 

@@ -7,6 +7,9 @@ Agreement of UE with SEAF before KC:
 	- => N.I. and I. on K_seaf and SUPI fail as well
 	- REASON: Trivially, as SEAF does not yet make the Running-claim at this point
 
+we will need lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
+
+
 Agreement of UE with SEAF after KC:
 	- weakagreement_ue_seaf_keyConf_noRev fails
 	- => N.I. and I. on K_seaf and SUPI fail as well
@@ -14,24 +17,23 @@ Agreement of UE with SEAF after KC:
 
 Agreement of UE with HSS before KC:
   = Kseaf:
-        - noninjectiveagreement_ue_hss_kseaf_noRev is violated.
-	- => I. on kseaf is also violated.
-	- REASON: disagreement on SNID.
+    - noninjectiveagreement_ue_hss_kseaf_noRev is violated.
+		- => I. on kseaf is also violated.
+		- REASON: disagreement on SNID.
 
   = SUPI
-	- injectiveagreement_ue_hss_supi_noRev is violated.
-	- REASON: supi is constant.
-	- noninjectiveagreement_ue_hss_supi_noKeyRev holds.
-	- noninjectiveagreement_ue_hss_supi_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev
-	  is violated as weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev
+		- injectiveagreement_ue_hss_supi_noRev is violated.
+		- REASON: supi is constant.
+		- noninjectiveagreement_ue_hss_supi_noKeyRev holds.
+		- noninjectiveagreement_ue_hss_supi_noAsyKeyRev_noSup		iRev_noSqnRev_noChanRev is violated as weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev
 	  is violated.
 
   = SNname
-	- noninjectiveagreement_ue_hss_snname_noRev is violated.
+		- noninjectiveagreement_ue_hss_snname_noRev is violated.
 
   = W-A:
-	- weakagreement_ue_hss_noKeyRev holds because noninjectiveagreement_ue_hss_supi_noKeyRev holds.
-	- weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev is violated.
+		- weakagreement_ue_hss_noKeyRev holds because noninjectiveagreement_ue_hss_supi_noKeyRev holds.
+		- weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev is violated.
 	- => minimal assumption: not K
 
 Agreement of UE with HSS after KC:
@@ -106,48 +108,48 @@ Agreement of SEAF with UE after KC:
 
 Agreement of SEAF with HSS before KC:
   = Kseaf:
-	- noninjectiveagreement_seaf_hss_kseaf_noChanRev holds.
-	- (non)injectiveagreement_seaf_hss_kseaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated due to attack
-	  on weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
-	- injectiveagreement_seaf_hss_kseaf_noChanRev_noSqnRev_noSupiRev_noAsyKeyRev is violated.
-	- injectiveagreement_seaf_hss_kseaf_noKeyRev_noChanRev holds.
-	- REASON: If the channel can be revealed then all is lost.
-		  If the key k can be revealed then there is an attack on injectivity where the adversary
-		  computes kseaf and injects it into another seafs run such that two commit claims on the
-		  same key are made.
+		- noninjectiveagreement_seaf_hss_kseaf_noChanRev holds.
+		- (non)injectiveagreement_seaf_hss_kseaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated due to attack
+		  on weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
+		- injectiveagreement_seaf_hss_kseaf_noChanRev_noSqnRev_noSupiRev_noAsyKeyRev is violated.
+		- injectiveagreement_seaf_hss_kseaf_noKeyRev_noChanRev holds.
+		- REASON: If the channel can be revealed then all is lost.
+			  If the key k can be revealed then there is an attack on injectivity where the adversary
+			  computes kseaf and injects it into another seafs run such that two commit claims on the
+			  same key are made.
   = SUPI:
-	- injectiveagreement_seaf_hss_supi_noRev is violated because supi is constant.
-	- noninjectiveagreement_seaf_hss_supi_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated due to attack
-	  on weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
-    	- noninjectiveagreement_seaf_hss_supi_noChanRev is satisfied.
+		- injectiveagreement_seaf_hss_supi_noRev is violated because supi is constant.
+		- noninjectiveagreement_seaf_hss_supi_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated due to attack
+		  on weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
+	    	- noninjectiveagreement_seaf_hss_supi_noChanRev is satisfied.
 
   = W-A:
-	- weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
-	- weakagreement_seaf_hss_noChanRev holds as consequence of noninjectiveagreement_seaf_hss_kseaf_noChanRev.
-	- REASON: If the channel can be revealed then all is lost.
+		- weakagreement_seaf_hss_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
+		- weakagreement_seaf_hss_noChanRev holds as consequence of noninjectiveagreement_seaf_hss_kseaf_noChanRev.
+		- REASON: If the channel can be revealed then all is lost.
 	
 Agreement of SEAF with HSS after KC:
   = Kseaf:
-	- noninjectiveagreement_seaf_hss_kseaf_keyConf_noChanRev holds.
-	- (non)injectiveagreement_seaf_hss_kseaf_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated due
-	  to attack on weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.
-	- injectiveagreement_seaf_hss_kseaf_keyConf_noChanRev_noSqnRev_noSupiRev_noAsyKeyRev is violated.
-	- injectiveagreement_seaf_hss_kseaf_keyConf_noKeyRev_noChanRev holds.
-	- REASON: If the channel can be revealed then all is lost.
-		  If the key k can be revealed then there is an attack on injectivity where the adversary
-		  computes kseaf and injects it into another seafs run such that two commit claims on the
-		  same key are made.
+		- noninjectiveagreement_seaf_hss_kseaf_keyConf_noChanRev holds.
+		- (non)injectiveagreement_seaf_hss_kseaf_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated due
+		  to attack on weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.
+		- injectiveagreement_seaf_hss_kseaf_keyConf_noChanRev_noSqnRev_noSupiRev_noAsyKeyRev is violated.
+		- injectiveagreement_seaf_hss_kseaf_keyConf_noKeyRev_noChanRev holds.
+		- REASON: If the channel can be revealed then all is lost.
+			  If the key k can be revealed then there is an attack on injectivity where the adversary
+			  computes kseaf and injects it into another seafs run such that two commit claims on the
+			  same key are made.
   = SUPI:
-	- injectiveagreement_seaf_hss_supi_keyConf_noRev is violated because supi is constant.
-	- noninjectiveagreement_seaf_hss_supi_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated due to attack
-	  on weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.
-	- noninjectiveagreement_seaf_hss_keyConf_supi_noChanRev holds.
+		- injectiveagreement_seaf_hss_supi_keyConf_noRev is violated because supi is constant.
+		- noninjectiveagreement_seaf_hss_supi_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated due to attack
+		  on weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.
+		- noninjectiveagreement_seaf_hss_keyConf_supi_noChanRev holds.
 
   = W-A:
-	- weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
-	- weakagreement_seaf_hss_keyConf_noChanRev holds as
-	  consequence of noninjectiveagreement_seaf_hss_kseaf_keyConf_noChanRev.
-	- REASON: If the channel can be revealed then all is lost.
+		- weakagreement_seaf_hss_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
+		- weakagreement_seaf_hss_keyConf_noChanRev holds as
+		  consequence of noninjectiveagreement_seaf_hss_kseaf_keyConf_noChanRev.
+		- REASON: If the channel can be revealed then all is lost.
 
 Agreement of HSS with UE:
   = Kseaf:
@@ -172,18 +174,18 @@ Agreement of HSS with UE:
 
 Agreement of HSS with SEAF:
   = Kseaf:
-	- injectiveagreement_hss_seaf_kseaf_noChanRev is satisfied.
-	- noninjectiveagreement_hss_seaf_kseaf_noChanRev is satisfied.
-	- (non)injectiveagreement_hss_seaf_kseaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated because the
-	  corresponding weak agreement is violated.
+		- injectiveagreement_hss_seaf_kseaf_noChanRev is satisfied.
+		- noninjectiveagreement_hss_seaf_kseaf_noChanRev is satisfied.
+		- (non)injectiveagreement_hss_seaf_kseaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev are violated because the
+		  corresponding weak agreement is violated.
 
   = SUPI:
-	- noninjectiveagreement_hss_seaf_supi_noRev is violated.
-	- REASON: Trivially, SEAF does not make the Running claim at this point in time.
+		- noninjectiveagreement_hss_seaf_supi_noRev is violated.
+		- REASON: Trivially, SEAF does not make the Running claim at this point in time.
 
   = W-A:
-	- weakagreement_hss_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
-	- weakagreement_hss_seaf_noChanRev is satisfied as consequence of injectiveagreement_hss_seaf_kseaf_noChanRev.
+		- weakagreement_hss_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev is violated.
+		- weakagreement_hss_seaf_noChanRev is satisfied as consequence of injectiveagreement_hss_seaf_kseaf_noChanRev.
 
 Secrecy:
 	- For UE, HSS, and SEAF the same:
