@@ -1925,8 +1925,8 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
 
         // %% comment out temp
-        // Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
-        // Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
+        Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
+        Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
 
         Honest(~supi),
         Honest(~idHN),
@@ -1958,69 +1958,6 @@ rule ue_receive_authReq_freshness_success_send_authResp:
 //     ]
 //     --[]->
 //     []
-
-// original 
-
-// rule ue_receive_authReq_freshness_success_send_authResp:
-//     let
-//         // Input, checks
-//         SqnHSS = SqnUE + dif // check freshness
-//         AK = f5(~k, RAND)
-//         MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
-//                 AUTN = <SqnHSS XOR AK, MAC>
-//         SNID = <'5G', idSN>
-//         msgIn = < RAND, AUTN, SNID >
-//         // Output
-//         RES = f2(~k, RAND)
-//         IK = f4(~k, RAND)
-//         CK = f3(~k, RAND)
-//         RES_star = KDF(<CK, IK>, <SNID, RES, RAND>)
-//         K_seaf = KDF(KDF(<CK, IK>, <SNID, SqnHSS XOR AK>), SNID)
-//         msgOut = RES_star
-//     in
-//     // [St_1_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root),
-//     [
-//         St_1_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, pk_HN ),
-//         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
-//         In(msgIn)
-//     ]
-//     --[
-//         // Open chains
-//         Sqn_UE_Invariance(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif),
-
-//         // Helper lemmas
-//         Sqn_UE_Change(~supi, ~idHN, SqnHSS),
-//         Sqn_UE_Use(~supi, ~idHN, SqnHSS),
-
-//         // Security properties
-//         Running(~supi, idSN,<'SEAF','UE',<'RES_star', RES_star>>),
-//         Running(~supi, idSN,<'SEAF','UE',<'K_seaf', K_seaf>>),
-//         Running(~supi, idSN,<'SEAF','UE',<'supi', ~supi>>),
-//         Running(~supi, ~idHN, <'HSS','UE', <'K_seaf', K_seaf>>),
-//         Running(~supi, ~idHN, <'HSS','UE', <'snname', idSN>>),
-//         Running(~supi, ~idHN, <'HSS','UE', <'supi', ~supi>>),
-//         Running(~supi, ~idHN, <'HSS','UE', <'RAND', RAND>>),
-//         Secret(<'UE', ~supi>, 'key', K_seaf),
-//         Secret(<'UE', ~supi>, 'supi', ~supi),
-//         Secret(<'UE', ~supi>, 'k', ~k),
-//         Commit(~supi, ~idHN, <'UE','HSS',<'AUTN', AUTN>>),
-//         Commit(~supi, ~idHN, <'UE','HSS',<'supi', ~supi>>),
-//         Commit(~supi, ~idHN, <'UE','HSS', <'snname', idSN>>),
-//         Commit(~supi, ~idHN, <'UE','HSS', <'K_seaf', K_seaf>>),
-//         Commit(~supi, idSN, <'UE','SEAF',<'K_seaf', K_seaf>>),
-//         Commit(~supi, idSN, <'UE','SEAF',<'RAND', RAND>>),
-//         Honest(~supi),
-//         Honest(~idHN),
-//         Honest(idSN)        
-//     ]->
-//     // [St_2_UE(~tid, ~supi, ~idHN, ~k, ~sqn_root, idSN, K_seaf),
-//     [
-//         St_2_UE(~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN, K_seaf, pk_HN),
-//         Out(msgOut),
-//         Sqn_UE(~supi, ~idHN, SqnHSS, ~sqn_root, count+dif)
-//     ]
-
-
 
 // Authentication Request (Auth-Req) and Sync Failure
 // [3G] Clauses C.2.1, C.2.2
@@ -2163,7 +2100,7 @@ rule seaf_receive_aca:
 
         // Security properties
         // %% comment out temp
-        // Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
+        Running(~idSN, supi,<'UE','SEAF',<'K_seaf', K_seaf>>),
 
         Running(~idSN, idHN,<'HSS','SEAF',<'supi', supi>>),
 
@@ -2462,8 +2399,10 @@ lemma weakagreement_ue_seaf_noRev [heuristic={weakagreement_ue_seaf_noRev}, hide
             ==> (Ex t2 #j. Running(b, a, t2)@j)
                 | (Ex X data #r. Rev(X,data)@r & Honest(X)@i) "
 
-// %% add additional lemma for {UE, SEAF} authentication prove
-lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+/********************************************/
+// %% add additional lemma for {UE, SEAF} authentication prove before KC
+/********************************************/
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
     " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
         ==> (Ex t2 #j. Running(b,a, t2)@j)
         | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
@@ -2472,6 +2411,66 @@ lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev[heuristic={w
         | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
         | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
 
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j)
+        // | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j)
+        // | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
+        // | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j)
+        // | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        // | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
+
+lemma weakagreement_ue_seaf_noAsyKeyRev[heuristic={weakagreement_ue_seaf_noAsyKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j)
+        // | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i) "
+        // | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i) "
+        // | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
+
+lemma weakagreement_ue_seaf[heuristic={weakagreement_ue_seaf_noAsyKeyRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j) "
+        // | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        // | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i) "
+        // | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i) 
+
+// lemma noninjectiveagreement_ue_hss_supi_noKeyRev [heuristic={injective_agreemeent}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+//     " All a b t #i. Commit(a,b,<'UE','HSS',<'supi', t>>)@i
+//             ==> (Ex #j. Running(b,a,<'UE','HSS',<'supi', t>>)@j)
+//                     | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
+lemma noninjectiveagreement_ue_seaf_supi_noKeyRev [heuristic={injective_agreemeent}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',<'supi', t>>)@i
+        ==> (Ex #j. Running(b,a,<'UE','SEAF',<'supi', t>>)@j)
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
+
+lemma injectiveagreement_ue_seaf_kseaf_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_src, hide_lemma=sqn_ue_nodecrease]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',<'K_seaf', t>>)@i
+            ==> (Ex #j. Running(b,a,<'UE','SEAF',<'K_seaf', t>>)@j 
+                 & j < i
+                 & not (Ex a2 b2 #i2. Commit(a2,b2,<'UE','SEAF',<'K_seaf', t>>)@i2
+                            & not (#i2 = #i)))
+                | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
 /********************************************/
 /*     Agreement UE -> SEAF (after KC)      */
 /********************************************/
@@ -2479,8 +2478,19 @@ lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev[heuristic={w
 // attack (stored)
 lemma weakagreement_ue_seaf_keyConf_noRev [heuristic={weakagreement_ue_seaf_keyConf_noRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
     " All a b t #i. CommitConf(a,b,<'UE','SEAF',t>)@i
-            ==> (Ex t2 #j. Running(b, a, t2)@j)
-                | (Ex X data #r. Rev(X,data)@r & Honest(X)@i) "
+        ==> (Ex t2 #j. Running(b, a, t2)@j)
+        | (Ex X data #r. Rev(X,data)@r & Honest(X)@i) "
+
+lemma weakagreement_ue_seaf_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev [heuristic={weakagreement_ue_seaf_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. CommitConf(a,b,<'UE','SEAF',t>)@i
+        ==> (Ex t2 #j. Running(b, a, t2)@j)
+        | (Ex X data #r. Rev(X,data)@r & Honest(X)@i)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
 
 /********************************************/
 /*     Agreement UE -> HSS (before KC)      */

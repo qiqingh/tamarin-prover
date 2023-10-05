@@ -1,5 +1,5 @@
 ##command useful
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev --derivcheck-timeout=0 5G_AKA_test.spthy > weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev.txt
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=injectiveagreement_ue_seaf_kseaf_noKeyRev --derivcheck-timeout=0 5G_AKA_test.spthy > injectiveagreement_ue_seaf_kseaf_noKeyRev.txt
 
 executability_honest
 executability_keyConf_honest

@@ -1430,7 +1430,10 @@ rule (modulo E) ue_send_attachReq:
    !SEAF( ~idSN, SNID, ~idHN, ~sk_SN, pk(~sk_SN), sig_SN ), Fr( ~R ),
    Fr( ~tid )
    ]
-  --[ Start_UE_Session( ~supi ) ]->
+  --[
+  Start_UE_Session( ~supi ),
+  Running( ~idSN, ~supi, <'UE', 'SEAF', 'PK_SN', pk(~sk_SN)> )
+  ]->
    [
    St_1_UE( ~tid, ~supi, ~idHN, ~idSN, ~k, ~sqn_root, pk_HN ),
    Out( <aenc(<~supi, ~R>, pk_HN), ~idHN> )
@@ -1643,6 +1646,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
   Sqn_UE_Invariance( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) ),
   Sqn_UE_Change( ~supi, ~idHN, (SqnUE++dif) ),
   Sqn_UE_Use( ~supi, ~idHN, (SqnUE++dif) ),
+  Commit( ~supi, idSN, <'UE', 'SEAF', 'PK_SN', pk(~sk_SN)> ),
   Running( ~supi, idSN,
            <'SEAF', 'UE', 'RES_star', 
             KDF(<f3(~k, RAND), f4(~k, RAND)>, <<'5G', idSN>, f2(~k, RAND), RAND>)>
@@ -1664,6 +1668,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
   ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
   Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
+  Running( ~supi, ~idHN, <'HSS', 'UE', 'RAND', RAND> ),
   Secret( <'UE', ~supi>, 'key',
           KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
                   <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
@@ -1690,7 +1695,8 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
                <'5G', idSN>)
           >
   ),
-  Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+  Commit( ~supi, idSN, <'UE', 'SEAF', 'RAND', RAND> ), Honest( ~supi ),
+  Honest( ~idHN ), Honest( idSN )
   ]->
    [
    St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
@@ -1722,6 +1728,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
     Sqn_UE_Invariance( ~supi, ~idHN, (SqnUE++dif), ~sqn_root, (count++dif) ),
     Sqn_UE_Change( ~supi, ~idHN, (SqnUE++dif) ),
     Sqn_UE_Use( ~supi, ~idHN, (SqnUE++dif) ),
+    Commit( ~supi, idSN, <'UE', 'SEAF', 'PK_SN', pk(~sk_SN)> ),
     Running( ~supi, idSN,
              <'SEAF', 'UE', 'RES_star', 
               KDF(<f3(~k, RAND), f4(~k, RAND)>, <<'5G', idSN>, f2(~k, RAND), RAND>)>
@@ -1743,6 +1750,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
     ),
     Running( ~supi, ~idHN, <'HSS', 'UE', 'snname', idSN> ),
     Running( ~supi, ~idHN, <'HSS', 'UE', 'supi', ~supi> ),
+    Running( ~supi, ~idHN, <'HSS', 'UE', 'RAND', RAND> ),
     Secret( <'UE', ~supi>, 'key',
             KDF(KDF(<f3(~k, RAND), f4(~k, RAND)>,
                     <<'5G', idSN>, (f5(~k, RAND)⊕(SqnUE++dif))>),
@@ -1769,7 +1777,8 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
                  <'5G', idSN>)
             >
     ),
-    Honest( ~supi ), Honest( ~idHN ), Honest( idSN )
+    Commit( ~supi, idSN, <'UE', 'SEAF', 'RAND', RAND> ), Honest( ~supi ),
+    Honest( ~idHN ), Honest( idSN )
     ]->
      [
      St_2_UE( ~tid, ~supi, ~idHN, idSN, ~k, ~sqn_root, idSN,
@@ -3070,6 +3079,134 @@ guarded formula characterizing all counter-examples:
  ∧
   (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
   (∀ X data #r. (Rev( X, data ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev [heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev},
+                                                                               hide_lemma=sqn_ue_nodecrease,
+                                                                               hide_lemma=sqn_ue_src,
+                                                                               hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    ((((((∃ t2 #j. Running( b, a, t2 ) @ #j) ∨
+         (∃ X #r. (Rev( X, 'secureChannel' ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+        (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+       (∃ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+      (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
+  (∀ X #r. (Rev( X, 'secureChannel' ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev [heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev},
+                                                                     hide_lemma=sqn_ue_nodecrease,
+                                                                     hide_lemma=sqn_ue_src,
+                                                                     hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    (((((∃ t2 #j. Running( b, a, t2 ) @ #j) ∨
+        (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+       (∃ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+      (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev [heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev},
+                                                            hide_lemma=sqn_ue_nodecrease,
+                                                            hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    ((((∃ t2 #j. Running( b, a, t2 ) @ #j) ∨
+       (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+      (∃ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf_noAsyKeyRev_noSupiRev [heuristic={weakagreement_ue_seaf_noAsyKeyRev_noSupiRev},
+                                                   hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src,
+                                                   hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    (((∃ t2 #j. Running( b, a, t2 ) @ #j) ∨
+      (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf_noAsyKeyRev [heuristic={weakagreement_ue_seaf_noAsyKeyRev},
+                                         hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src,
+                                         hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    ((∃ t2 #j. Running( b, a, t2 ) @ #j) ∨
+     (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  (∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma weakagreement_ue_seaf [heuristic={weakagreement_ue_seaf_noAsyKeyRev},
+                             hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src,
+                             hide_lemma=sqn_hss_src]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', t> ) @ #i) ⇒
+    (∃ t2 #j. Running( b, a, t2 ) @ #j)"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', t> ) @ #i)
+ ∧
+  ∀ t2 #j. (Running( b, a, t2 ) @ #j) ⇒ ⊥"
 */
 by sorry
 
@@ -4622,7 +4759,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 28.10s
+  processing time: 40.35s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4637,6 +4774,12 @@ analyzed: 5G_AKA_test.spthy
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)
   weakagreement_ue_seaf_noRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf_noAsyKeyRev_noSupiRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
+  weakagreement_ue_seaf (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_seaf_keyConf_noRev (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev (all-traces): analysis incomplete (1 steps)
   cleanAttack_injectiveagreement_ue_hss_supi_noRev (all-traces): analysis incomplete (1 steps)
