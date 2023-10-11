@@ -1,5 +1,5 @@
 ##command useful
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=injectiveagreement_ue_seaf_kseaf_noKeyRev --derivcheck-timeout=0 5G_AKA_test.spthy > injectiveagreement_ue_seaf_kseaf_noKeyRev.txt
+tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev --derivcheck-timeout=0 5G_AKA.spthy > ./origin-results/weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev.txt
 
 executability_honest
 executability_keyConf_honest
@@ -28,7 +28,7 @@ injective agreement, which additionally ensures that for each run of the protoco
 
 
 #########################################################
-weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev
+weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRe
 
 rule ue_send_attachReq
 	Running(idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
