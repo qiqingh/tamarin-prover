@@ -2762,91 +2762,7 @@ guarded formula characterizing all satisfying traces:
    ⇒
     #j = #k)"
 */
-simplify
-solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
-                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
-       ) ▶₀ #i )
-  case seaf_receive_authResp_send_ac
-  solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
-    case receive_secure_case_1
-    solve( RcvS( ~idHN, ~idSN,
-                 <'aia', ~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>
-           ) ▶₂ #vr.1 )
-      case receive_secure_case_1
-      solve( RcvS( ~idSN, ~idHN,
-                   <'ac', 
-                    KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>), 
-                    <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, '5G', ~idSN>
-             ) ▶₁ #vr.8 )
-        case receive_secure_case_1
-        solve( RcvS( ~idSN, ~idHN,
-                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, 
-                      pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN)>
-               ) ▶₁ #vr.9 )
-          case receive_secure_case_1
-          solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                 ) ▶₅ #vr.9 )
-            case add_subscription
-            solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                            <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
-                   ) @ #vk )
-              case ue_receive_authReq_freshness_success_send_authResp
-              solve( Sqn_UE( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                     ) ▶₃ #vr.17 )
-                case add_subscription
-                solve( !KU( f1(~k, <('1'++~sqn_root++dif), ~RAND>) ) @ #vk.10 )
-                  case seaf_receive_aia_send_authReq
-                  solve( !KU( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) @ #vk.10 )
-                    case coerce
-                    solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.2 )
-                      case seaf_receive_aia_send_authReq
-                      solve( RcvS( idHN.1, ~idSN.1, <'aia', RAND.1, HXRES_star, K_seaf, AUTN>
-                             ) ▶₂ #vr.22 )
-                        case receive_secure_case_1
-                        solve( (#vl.1, 0) ~~> (#vk.2, 0) )
-                          case d_0_snd
-                          solve( (#vr.19, 0) ~~> (#vk.2, 0) )
-                            case d_0_fst
-                            solve( (#vr.20, 0) ~~> (#vk.2, 0) )
-                              case d_0_fst
-                              solve( (#vr.22, 0) ~~> (#vk.2, 0) )
-                                case Xor
-                                solve( !KU( aenc(<~supi, ~R>, pk(~sk_HN)) ) @ #vk.7 )
-                                  case ue_send_attachReq
-                                  solve( !KU( ~idHN ) @ #vk.8 )
-                                    case init_homeNet
-                                    solve( !KU( ~RAND ) @ #vk.10 )
-                                      case seaf_receive_aia_send_authReq
-                                      solve( !KU( ~idSN ) @ #vk.14 )
-                                        case init_servNet_case_1
-                                        solve( !KU( sign(pk(~sk_SN), ~sk_HN) ) @ #vk.17 )
-                                          case seaf_receive_aia_send_authReq
-                                          solve( !KU( pk(~sk_SN) ) @ #vk.17 )
-                                            case init_servNet
-                                            SOLVED // trace found
-                                          qed
-                                        qed
-                                      qed
-                                    qed
-                                  qed
-                                qed
-                              qed
-                            qed
-                          qed
-                        qed
-                      qed
-                    qed
-                  qed
-                qed
-              qed
-            qed
-          qed
-        qed
-      qed
-    qed
-  qed
-qed
+by sorry
 
 lemma executability_keyConf_honest:
   exists-trace
@@ -4640,7 +4556,61 @@ guarded formula characterizing all counter-examples:
   (∀ X #r. (Rev( X, 'secureChannel' ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
   (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
 */
-by sorry
+simplify
+solve( Secret( <'SEAF', idSN>, 'key', t ) @ #i )
+  case seaf_receive_aca
+  solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
+                    RES_star, t, ~sk_SN, pk(~sk_SN), sig_SN
+         ) ▶₀ #i )
+    case seaf_receive_authResp_send_ac
+    solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
+      case receive_secure_case_1
+      solve( RcvS( ~idHN, ~idSN,
+                   <'aia', ~RAND, SHA256(RES_star, ~RAND), t, AUTN>
+             ) ▶₂ #vr.1 )
+        case receive_secure_case_1
+        solve( !KU( KDF(KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                            <<'5G', ~idSN>, (f5(~k, ~RAND)⊕('1'++~sqn_root++count))>),
+                        <'5G', ~idSN>)
+               ) @ #vk )
+          case c_KDF
+          solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                          <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
+                 ) @ #vk.1 )
+            case c_KDF
+            solve( !KU( f3(~k, ~RAND) ) @ #vk.13 )
+              case c_f3
+              solve( !KU( ~k ) @ #vk.18 )
+                case reveal_Ltk_Sym
+                by contradiction /* from formulas */
+              qed
+            qed
+          next
+            case ue_receive_authReq_freshness_success_send_authResp
+            solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
+                            <<'5G', ~idSN>, (f5(~k, ~RAND)⊕('1'++~sqn_root++count))>)
+                   ) @ #vk.7 )
+              case c_KDF
+              solve( !KU( f3(~k, ~RAND) ) @ #vk.24 )
+                case c_f3
+                solve( !KU( ~k ) @ #vk.27 )
+                  case reveal_Ltk_Sym
+                  by contradiction /* from formulas */
+                qed
+              qed
+            qed
+          qed
+        qed
+      next
+        case receive_secure_case_2
+        by contradiction /* from formulas */
+      qed
+    next
+      case receive_secure_case_2
+      by contradiction /* from formulas */
+    qed
+  qed
+qed
 
 lemma secrecy_seaf_kseaf_noChanRev_noSupiRev_noSqnRev_noAsyKeyRev [heuristic={secrecy_seaf},
                                                                    hide_lemma=sqn_ue_nodecrease,
@@ -4832,7 +4802,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 28.65s
+  processing time: 6.26s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4842,7 +4812,7 @@ analyzed: 5G_AKA_test.spthy
   sqn_hss_src (all-traces): analysis incomplete (1 steps)
   sqn_ue_nodecrease (all-traces): analysis incomplete (1 steps)
   sqn_ue_unique (all-traces): analysis incomplete (1 steps)
-  executability_honest (exists-trace): verified (24 steps)
+  executability_honest (exists-trace): analysis incomplete (1 steps)
   executability_keyConf_honest (exists-trace): analysis incomplete (1 steps)
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)
@@ -4910,7 +4880,7 @@ analyzed: 5G_AKA_test.spthy
   secrecy_hss_supi_noChanRevAtAll_noSupiRev_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
   secrecy_hss_supi_noChanRevAtAll_noSupiRev_noKeyRev_noSqnRev (all-traces): analysis incomplete (1 steps)
   secrecy_hss_k_noKeyRev (all-traces): analysis incomplete (1 steps)
-  secrecy_seaf_kseaf_noChanRev_noKeyRev (all-traces): analysis incomplete (1 steps)
+  secrecy_seaf_kseaf_noChanRev_noKeyRev (all-traces): verified (16 steps)
   secrecy_seaf_kseaf_noChanRev_noSupiRev_noSqnRev_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
   secrecy_seaf_kseaf_noKeyRev_noSupiRev_noSqnRev_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
   cleanAttack_secrecy_seaf_supi_noRev (all-traces): analysis incomplete (1 steps)

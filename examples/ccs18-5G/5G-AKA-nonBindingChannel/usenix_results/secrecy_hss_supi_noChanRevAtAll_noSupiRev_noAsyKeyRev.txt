@@ -1638,8 +1638,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
    Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
    In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
         <'5G', idSN>, pk(~sk_SN), sig_SN>
-   ),
-   In( additional_SN_verify )
+   )
    ]
   --[
   Equality( verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true ),
@@ -1720,8 +1719,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
      Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
      In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
           <'5G', idSN>, pk(~sk_SN), sig_SN>
-     ),
-     In( additional_SN_verify )
+     )
      ]
     --[
     Equality( z, true ),
@@ -1794,20 +1792,20 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
      ]
     variants (modulo AC)
     1. ~sk_HN
-             = ~sk_HN.21
+             = ~sk_HN.20
        ~sk_SN
-             = ~sk_SN.22
+             = ~sk_SN.21
        sig_SN
-             = sign(pk(~sk_SN.22), ~sk_HN.21)
+             = sign(pk(~sk_SN.21), ~sk_HN.20)
        z     = true
     
     2. ~sk_HN
-             = ~sk_HN.32
+             = ~sk_HN.30
        ~sk_SN
-             = ~sk_SN.33
+             = ~sk_SN.31
        sig_SN
-             = sig_SN.44
-       z     = verify(sig_SN.44, pk(~sk_SN.33), pk(~sk_HN.32))
+             = sig_SN.41
+       z     = verify(sig_SN.41, pk(~sk_SN.31), pk(~sk_HN.30))
     // loop breaker: [3]
   */
 
@@ -2762,91 +2760,7 @@ guarded formula characterizing all satisfying traces:
    ⇒
     #j = #k)"
 */
-simplify
-solve( St_3_SEAF( ~tid, ~idSN, <'5G', ~idSN>, conc_supi, idHN, ~RAND,
-                  RES_star, K_seaf, ~sk_SN, pk(~sk_SN), sig_SN
-       ) ▶₀ #i )
-  case seaf_receive_authResp_send_ac
-  solve( RcvS( ~idHN, ~idSN, <'aca', 'confirm', supi> ) ▶₁ #i )
-    case receive_secure_case_1
-    solve( RcvS( ~idHN, ~idSN,
-                 <'aia', ~RAND, SHA256(RES_star, ~RAND), K_seaf, AUTN>
-           ) ▶₂ #vr.1 )
-      case receive_secure_case_1
-      solve( RcvS( ~idSN, ~idHN,
-                   <'ac', 
-                    KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                        <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>), 
-                    <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, '5G', ~idSN>
-             ) ▶₁ #vr.8 )
-        case receive_secure_case_1
-        solve( RcvS( ~idSN, ~idHN,
-                     <'air', <aenc(<~supi, ~R>, pk(~sk_HN)), ~idHN>, <'5G', ~idSN>, 
-                      pk(~sk_SN), sign(pk(~sk_SN), ~sk_HN)>
-               ) ▶₁ #vr.9 )
-          case receive_secure_case_1
-          solve( Sqn_HSS( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                 ) ▶₅ #vr.9 )
-            case add_subscription
-            solve( !KU( KDF(<f3(~k, ~RAND), f4(~k, ~RAND)>,
-                            <<'5G', ~idSN>, f2(~k, ~RAND), ~RAND>)
-                   ) @ #vk )
-              case ue_receive_authReq_freshness_success_send_authResp
-              solve( Sqn_UE( ~supi, ~idHN, (~sqn_root++count), ~sqn_root, count
-                     ) ▶₃ #vr.17 )
-                case add_subscription
-                solve( !KU( f1(~k, <('1'++~sqn_root++dif), ~RAND>) ) @ #vk.10 )
-                  case seaf_receive_aia_send_authReq
-                  solve( !KU( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) @ #vk.10 )
-                    case coerce
-                    solve( !KD( (f5(~k, ~RAND)⊕('1'++'1'++~sqn_root)) ) ▶₀ #vk.2 )
-                      case seaf_receive_aia_send_authReq
-                      solve( RcvS( idHN.1, ~idSN.1, <'aia', RAND.1, HXRES_star, K_seaf, AUTN>
-                             ) ▶₂ #vr.22 )
-                        case receive_secure_case_1
-                        solve( (#vl.1, 0) ~~> (#vk.2, 0) )
-                          case d_0_snd
-                          solve( (#vr.19, 0) ~~> (#vk.2, 0) )
-                            case d_0_fst
-                            solve( (#vr.20, 0) ~~> (#vk.2, 0) )
-                              case d_0_fst
-                              solve( (#vr.22, 0) ~~> (#vk.2, 0) )
-                                case Xor
-                                solve( !KU( aenc(<~supi, ~R>, pk(~sk_HN)) ) @ #vk.7 )
-                                  case ue_send_attachReq
-                                  solve( !KU( ~idHN ) @ #vk.8 )
-                                    case init_homeNet
-                                    solve( !KU( ~RAND ) @ #vk.10 )
-                                      case seaf_receive_aia_send_authReq
-                                      solve( !KU( ~idSN ) @ #vk.14 )
-                                        case init_servNet_case_1
-                                        solve( !KU( sign(pk(~sk_SN), ~sk_HN) ) @ #vk.17 )
-                                          case seaf_receive_aia_send_authReq
-                                          solve( !KU( pk(~sk_SN) ) @ #vk.17 )
-                                            case init_servNet
-                                            SOLVED // trace found
-                                          qed
-                                        qed
-                                      qed
-                                    qed
-                                  qed
-                                qed
-                              qed
-                            qed
-                          qed
-                        qed
-                      qed
-                    qed
-                  qed
-                qed
-              qed
-            qed
-          qed
-        qed
-      qed
-    qed
-  qed
-qed
+by sorry
 
 lemma executability_keyConf_honest:
   exists-trace
@@ -3210,7 +3124,7 @@ guarded formula characterizing all counter-examples:
 */
 by sorry
 
-lemma noninjectiveagreement_ue_seaf_supi_noKeyRev [heuristic={injective_agreemeent},
+lemma noninjectiveagreement_ue_seaf_supi_noKeyRev [heuristic={tactic_0},
                                                    hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src,
                                                    hide_lemma=sqn_hss_src]:
   all-traces
@@ -3228,29 +3142,84 @@ guarded formula characterizing all counter-examples:
 */
 by sorry
 
-lemma injectiveagreement_ue_seaf_kseaf_noKeyRev [heuristic={tactic_0},
-                                                 hide_lemma=sqn_ue_src, hide_lemma=sqn_ue_nodecrease]:
+lemma noninjectiveagreement_ue_seaf_PKSN_noKeyRev [heuristic={tactic_0},
+                                                   hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src,
+                                                   hide_lemma=sqn_hss_src]:
   all-traces
   "∀ a b t #i.
-    (Commit( a, b, <'UE', 'SEAF', 'K_seaf', t> ) @ #i) ⇒
-    ((∃ #j.
-       ((Running( b, a, <'UE', 'SEAF', 'K_seaf', t> ) @ #j) ∧ (#j < #i)) ∧
-       (¬(∃ a2 b2 #i2.
-           (Commit( a2, b2, <'UE', 'SEAF', 'K_seaf', t> ) @ #i2) ∧
-           (¬(#i2 = #i))))) ∨
+    (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i) ⇒
+    ((∃ #j. Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j) ∨
      (∃ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i)))"
 /*
 guarded formula characterizing all counter-examples:
 "∃ a b t #i.
-  (Commit( a, b, <'UE', 'SEAF', 'K_seaf', t> ) @ #i)
+  (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i)
+ ∧
+  (∀ #j. (Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j) ⇒ ⊥) ∧
+  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma injectiveagreement_ue_seaf_PKSN_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev [heuristic={tactic_0},
+                                                                               hide_lemma=sqn_ue_src,
+                                                                               hide_lemma=sqn_ue_nodecrease]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i) ⇒
+    (((((∃ #j.
+          ((Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j) ∧ (#j < #i)) ∧
+          (¬(∃ a2 b2 #i2.
+              (Commit( a2, b2, <'UE', 'SEAF', 'PK_SN', t> ) @ #i2) ∧ (¬(#i2 = #i))))) ∨
+        (∃ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+       (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+      (∃ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i)
  ∧
   (∀ #j.
-    (Running( b, a, <'UE', 'SEAF', 'K_seaf', t> ) @ #j)
+    (Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j)
+   ⇒
+    ((¬(#j < #i)) ∨
+     (∃ a2 b2 #i2.
+       (Commit( a2, b2, <'UE', 'SEAF', 'PK_SN', t> ) @ #i2) ∧ ¬(#i2 = #i)))) ∧
+  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'sqn', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+*/
+by sorry
+
+lemma injectiveagreement_ue_seaf_PKSN_noAsyKeyRev_noSupiRev_noKeyRev [heuristic={tactic_0},
+                                                                      hide_lemma=sqn_ue_src,
+                                                                      hide_lemma=sqn_ue_nodecrease]:
+  all-traces
+  "∀ a b t #i.
+    (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i) ⇒
+    ((((∃ #j.
+         ((Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j) ∧ (#j < #i)) ∧
+         (¬(∃ a2 b2 #i2.
+             (Commit( a2, b2, <'UE', 'SEAF', 'K_seaf', t> ) @ #i2) ∧
+             (¬(#i2 = #i))))) ∨
+       (∃ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+      (∃ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i))) ∨
+     (∃ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b t #i.
+  (Commit( a, b, <'UE', 'SEAF', 'PK_SN', t> ) @ #i)
+ ∧
+  (∀ #j.
+    (Running( b, a, <'UE', 'SEAF', 'PK_SN', t> ) @ #j)
    ⇒
     ((¬(#j < #i)) ∨
      (∃ a2 b2 #i2.
        (Commit( a2, b2, <'UE', 'SEAF', 'K_seaf', t> ) @ #i2) ∧ ¬(#i2 = #i)))) ∧
-  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
+  (∀ X key #r. (Rev( X, <'k', key> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
+  (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
 */
 by sorry
 
@@ -4579,7 +4548,49 @@ guarded formula characterizing all counter-examples:
   (∀ X k #r. (Rev( X, <'skHN', k> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥) ∧
   (∀ X s #r. (Rev( X, <'supi', s> ) @ #r) ∧ (Honest( X ) @ #i) ⇒ ⊥)"
 */
-by sorry
+simplify
+solve( Secret( <'HSS', supi>, 'supi', t ) @ #i )
+  case hss_receive_ac_send_aca
+  solve( St_1_HSS( ~tid, ~idHN, ~supi, suci, idSN, <'5G', idSN>, ~k, Sqn,
+                   XRES_star, ~RAND, ~sqn_root, ~sk_HN
+         ) ▶₀ #i )
+    case hss_receive_air_send_aia_case_1
+    solve( !KU( ~supi ) @ #vk )
+      case reveal_Ltk_supi
+      by contradiction /* from formulas */
+    next
+      case secureChannel_compromised_out_case_1
+      by contradiction /* from formulas */
+    next
+      case secureChannel_compromised_out_case_2
+      by contradiction /* from formulas */
+    next
+      case ue_send_attachReq
+      solve( !KU( ~sk_HN ) @ #vk.2 )
+        case reveal_sk_HN
+        by contradiction /* from formulas */
+      qed
+    qed
+  next
+    case hss_receive_air_send_aia_case_2
+    solve( !KU( ~supi ) @ #vk )
+      case reveal_Ltk_supi
+      by contradiction /* from formulas */
+    next
+      case secureChannel_compromised_out_case_1
+      by contradiction /* from formulas */
+    next
+      case secureChannel_compromised_out_case_2
+      by contradiction /* from formulas */
+    next
+      case ue_send_attachReq
+      solve( !KU( ~sk_HN ) @ #vk.2 )
+        case reveal_sk_HN
+        by contradiction /* from formulas */
+      qed
+    qed
+  qed
+qed
 
 lemma secrecy_hss_supi_noChanRevAtAll_noSupiRev_noKeyRev_noSqnRev [heuristic={secrecy_hss_no_k},
                                                                    hide_lemma=sqn_ue_nodecrease,
@@ -4832,7 +4843,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 28.65s
+  processing time: 5.85s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)
@@ -4842,7 +4853,7 @@ analyzed: 5G_AKA_test.spthy
   sqn_hss_src (all-traces): analysis incomplete (1 steps)
   sqn_ue_nodecrease (all-traces): analysis incomplete (1 steps)
   sqn_ue_unique (all-traces): analysis incomplete (1 steps)
-  executability_honest (exists-trace): verified (24 steps)
+  executability_honest (exists-trace): analysis incomplete (1 steps)
   executability_keyConf_honest (exists-trace): analysis incomplete (1 steps)
   executability_desync (exists-trace): analysis incomplete (1 steps)
   executability_resync (exists-trace): analysis incomplete (1 steps)
@@ -4854,7 +4865,9 @@ analyzed: 5G_AKA_test.spthy
   weakagreement_ue_seaf_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_seaf (all-traces): analysis incomplete (1 steps)
   noninjectiveagreement_ue_seaf_supi_noKeyRev (all-traces): analysis incomplete (1 steps)
-  injectiveagreement_ue_seaf_kseaf_noKeyRev (all-traces): analysis incomplete (1 steps)
+  noninjectiveagreement_ue_seaf_PKSN_noKeyRev (all-traces): analysis incomplete (1 steps)
+  injectiveagreement_ue_seaf_PKSN_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev (all-traces): analysis incomplete (1 steps)
+  injectiveagreement_ue_seaf_PKSN_noAsyKeyRev_noSupiRev_noKeyRev (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_seaf_keyConf_noRev (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_seaf_keyConf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev (all-traces): analysis incomplete (1 steps)
   weakagreement_ue_hss_noAsyKeyRev_noSupiRev_noSqnRev_noChanRev (all-traces): analysis incomplete (1 steps)
@@ -4907,7 +4920,7 @@ analyzed: 5G_AKA_test.spthy
   secrecy_hss_kseaf_noChanRev_noSupiRev_noSqnRev_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
   secrecy_hss_kseaf_noChanRev_noKeyRev (all-traces): analysis incomplete (1 steps)
   cleanAttack_secrecy_hss_supi_noRev (all-traces): analysis incomplete (1 steps)
-  secrecy_hss_supi_noChanRevAtAll_noSupiRev_noAsyKeyRev (all-traces): analysis incomplete (1 steps)
+  secrecy_hss_supi_noChanRevAtAll_noSupiRev_noAsyKeyRev (all-traces): verified (15 steps)
   secrecy_hss_supi_noChanRevAtAll_noSupiRev_noKeyRev_noSqnRev (all-traces): analysis incomplete (1 steps)
   secrecy_hss_k_noKeyRev (all-traces): analysis incomplete (1 steps)
   secrecy_seaf_kseaf_noChanRev_noKeyRev (all-traces): analysis incomplete (1 steps)

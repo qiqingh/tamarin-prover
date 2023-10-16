@@ -1605,6 +1605,8 @@ rule ue_send_attachReq:
         // Executability
         Start_UE_Session(~supi),
         // %% add aditional authentication property check
+        Commit(~supi, ~idSN, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>),
+
         Running(~idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
     ]->
     [
@@ -1633,9 +1635,13 @@ rule seaf_receive_attachReq_send_air:
     --[
         // Executability
         Start_SEAF_Session(~idSN),
+        // %% additional security check
+        Commit(~idSN, idHN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
 
-        // %% add aditional authentication property check
-        // Running(idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>)
+        Running(idHN, ~idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
+
+        Running(~idSN, idHN, <'HSS','SEAF',<'PK_SN', pk(~sk_SN)>>),
+
     ]->
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk_SN, sig_SN),
@@ -1700,15 +1706,15 @@ rule hss_receive_air_send_aia:
         // Executability
         Start_HSS_Session(~idHN),
         HSS_Send_Aia(),
+        // %% additional security check
+        Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
+        Commit(idSN, ~idHN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
+        Commit(~idHN, idSN, <'HSS','SEAF',<'PK_SN', pk(~sk_SN)>>),
 
         // Security properties
         Running(~idHN, idSN,<'SEAF','HSS',<'K_seaf', K_seaf>>),
         Running(~idHN, idSN,<'SEAF','HSS',<'supi', ~supi>>),
         Running(~idHN, idSN,<'SEAF','HSS',<'RES_star', XRES_star>>),
-
-        // %% add the security property 'SEAF','HSS' to check
-        // Running(~idHN, idSN, <'SEAF','HSS',<'PK_SN', pk(~sk_SN)>>),
-
         Running(~idHN, ~supi,<'UE','HSS', <'K_seaf', K_seaf>>),
         Running(~idHN, ~supi,<'UE','HSS', <'snname', idSN>>),
         Running(~idHN, ~supi,<'UE','HSS',<'supi', ~supi>>),
@@ -1729,35 +1735,11 @@ rule hss_receive_air_send_aia:
 rule seaf_receive_aia_send_authReq:
     let
         5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
-        // msgIn = 5G_AV
-
-        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
-
-        // msgIn = < 5G_AV, SKHN_encrypt_PKSN >
 
         msgIn =  5G_AV 
 
-        // SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
-
-        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
-
-        // PKSN_derive = adec(SKHN_encrypt_PKSN, pk(~sk_HN))
-        // RAND = adec(SKSN_encrypt_RAND, PKSN_derive)
-
         msgOut = < RAND, AUTN, SNID, pk(~sk_SN), sig_SN>
-        // msgOut = < AUTN, SNID, sig_SN>
 
-        // msgOut = < AUTN, SNID, sig_SN, SKSN_encrypt_RAND, pk(~sk_SN)>
-
-
-
-
-        // msgOut = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
-
-        // msgOut = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN, f1(RAND, 'SEAF')>
-
-        // RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
-        // additional_SN_verify = < SKSN_encrypt_RAND, SKHN_encrypt_PKSN >
         in
     [
         St_1_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, ~sk_SN, pk(~sk_SN), sig_SN),
@@ -1785,35 +1767,6 @@ rule seaf_receive_aia_send_authReq:
     ]
 
 
-// Here add the implicit authentication 'get RAND_derive equals to RAND in SEAF' than the UE authenticate the SN with the help of HN
-// rule ue_check_RAND:
-    // let
-    //     5G_AV = < RAND, HXRES_star, K_seaf, AUTN >
-
-    //     SKHN_encrypt_PKSN = aenc(pk(~sk_SN), sk_HN)
-
-    //     SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
-
-    //     msgIn = < SKSN_encrypt_RAND, AUTN, SNID, SKHN_encrypt_PKSN>
-
-    //     RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
-
-    // in
-    // [
-    //     St_2_SEAF(~tid, ~idSN, SNID, conc_supi, idHN, RAND, HXRES_star, K_seaf, ~sk_SN, pk(~sk_SN)),
-    //     St_0_UE(~tid, ~supi, idHN, ~idSN, ~k, ~sqn_root, pk_HN),
-    //     In(msgIn)
-    // ]
-    // --[
-    //     // Equality(RAND, RAND_derive),
-    //     SEAF_End()
-    // ]->
-    // [   
-    //     St_1_UE(~tid, ~supi, idHN, ~idSN, ~k, ~sqn_root, pk_HN, RAND)
-    // ]
-
-
-
 // Authentication Request (Auth-Req) + Authentication Response (Auth-Resp)
 // The UE accepts a Sqn iff it is greater than SqnMax (delta = infinity).
 // The UE stores the greatest Sqn accepted.
@@ -1821,55 +1774,15 @@ rule ue_receive_authReq_freshness_success_send_authResp:
     let
         // Input, checks
         SqnHSS = SqnUE + dif // check freshness
-        // AK = f5(~k, RAND)
-        // MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
-        // AUTN = <SqnHSS XOR AK, MAC>
+
         
         SNID = <'5G', idSN>
-        // msgIn = < RAND, AUTN, SNID >
-
-        // RAND = adec(SKSN_encrypt_RAND, pk(~sk_SN))
-
-        // if not involve the derivation of SKSN_encrypt_RAND, SKHN_encrypt_PKSN, seems it will into endless loop
-
-        // if add the derivation of SKSN_encrypt_RAND, SKHN_encrypt_PKSN, the RAND come from nowhere
-        // here if Fr a RAND than the executability get failed 2 steps
-        // here is add the St_2_SEAF in both premise and conclusion than the executability get failed 15 steps 
-        // total should be 23 steps
-
-        // SKSN_encrypt_RAND = aenc(RAND, ~sk_SN)
-
-        // SKHN_encrypt_PKSN = aenc(pk(~sk_SN), ~sk_HN)
-
-        // PKSN_derive = adec(SKHN_encrypt_PKSN, pk(~sk_HN))
-        // RAND = adec(SKSN_encrypt_RAND, PKSN_derive)
-
-
-        // PKSN_derive = adec(SKHN_encrypt_PKSN, pk(~sk_SN))
-        // RAND_derive = adec(SKSN_encrypt_RAND, PKSN_derive)
-
-        // RAND_derive = adec(aenc(RAND, ~sk_SN), adec(SKHN_encrypt_PKSN, pk(~sk_SN)))
-
-        // RAND = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
-
-        // additional_SN_verify = < SKSN_encrypt_RAND, SKHN_encrypt_PKSN >
 
         AK = f5(~k, RAND)
         MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
         AUTN = <SqnHSS XOR AK, MAC>
 
-        // RAND_derive = get_RAND(SKHN_encrypt_PKSN, SKSN_encrypt_RAND)
-
-        // msgIn = < RAND, AUTN, SNID, SKHN_encrypt_PKSN>
-
-        // msgIn = < RAND, AUTN, SNID, sig_SN>
-
-        msgIn = < RAND, AUTN, SNID, pk(~sk_SN), sig_SN>
-
-        // msgIn = < AUTN, SNID, sig_SN>
-
-        // msgIn = < AUTN, SNID, sig_SN, SKSN_encrypt_RAND, pk(~sk_SN)>
-       
+        msgIn = < RAND, AUTN, SNID, pk(~sk_SN), sig_SN>       
 
         // Output
         RES = f2(~k, RAND)
@@ -1889,7 +1802,7 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         !Pk(~idHN, pk(~sk_HN)),
         Sqn_UE(~supi, ~idHN, SqnUE, ~sqn_root, count),
         In(msgIn),
-        In(additional_SN_verify)
+        // In(additional_SN_verify)
         // In(f1(RAND, 'SEAF'))
     ]
     --[
@@ -1906,6 +1819,8 @@ rule ue_receive_authReq_freshness_success_send_authResp:
         Sqn_UE_Use(~supi, ~idHN, SqnHSS),
 
         // %% add aditional authentication property to check
+
+        Running(idSN, ~supi, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>),
         Commit(~supi, idSN, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>),
 
         // Security properties
@@ -2457,19 +2372,87 @@ lemma weakagreement_ue_seaf[heuristic={weakagreement_ue_seaf_noAsyKeyRev}, hide_
 //             ==> (Ex #j. Running(b,a,<'UE','HSS',<'supi', t>>)@j)
 //                     | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
 
-lemma noninjectiveagreement_ue_seaf_supi_noKeyRev [heuristic={injective_agreemeent}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+lemma noninjectiveagreement_ue_seaf_supi_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
     " All a b t #i. Commit(a,b,<'UE','SEAF',<'supi', t>>)@i
         ==> (Ex #j. Running(b,a,<'UE','SEAF',<'supi', t>>)@j)
         | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
 
 
-lemma injectiveagreement_ue_seaf_kseaf_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_src, hide_lemma=sqn_ue_nodecrease]:
-    " All a b t #i. Commit(a,b,<'UE','SEAF',<'K_seaf', t>>)@i
-            ==> (Ex #j. Running(b,a,<'UE','SEAF',<'K_seaf', t>>)@j 
+// Commit(~supi, idSN, <'UE','SEAF',<'PK_SN', pk(~sk_SN)>>),
+
+// %% additional checks on PKSN
+lemma noninjectiveagreement_ue_seaf_PKSN_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'UE','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'UE','SEAF',<'PK_SN', t>>)@j)
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+
+// falsified 6 steps
+lemma noninjectiveagreement_seaf_hss_PKSN_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'SEAF','HSS',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'SEAF','HSS',<'PK_SN', t>>)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)"
+
+// falsified 6 steps
+lemma weakagreement_seaf_hss[heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'SEAF','HSS',t>)@i
+        ==> (Ex t2 #j. Running(b,a, t2)@j) "
+
+
+lemma noninjectiveagreement_hss_seaf_PKSN_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'sqn',s>)@r & Honest(X)@i)
+        | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) 
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)"
+
+lemma noninjectiveagreement_hss_seaf_PKSN_noAsyKeyRev_noKeyRev_noChanRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)"
+
+lemma noninjectiveagreement_hss_seaf_PKSN_noKeyRev_noChanRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)
+        | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)"
+
+lemma noninjectiveagreement_hss_seaf_PKSN_noChanRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j)
+        | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i)"
+
+lemma noninjectiveagreement_hss_seaf_PKSN [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+        ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j)"
+
+// falsified 26 steps
+lemma injectiveagreement_hss_seaf_kseaf_noKeyRev_noChanRev [heuristic={tactic_0}, hide_lemma=sqn_ue_nodecrease, hide_lemma=sqn_ue_src, hide_lemma=sqn_hss_src]:
+    " All a b t #i. Commit(a,b,<'HSS','SEAF',<'PK_SN', t>>)@i
+            ==> (Ex #j. Running(b,a,<'HSS','SEAF',<'PK_SN', t>>)@j 
                  & j < i
-                 & not (Ex a2 b2 #i2. Commit(a2,b2,<'UE','SEAF',<'K_seaf', t>>)@i2
+                 & not (Ex a2 b2 #i2. Commit(a2,b2,<'HSS','SEAF',<'PK_SN', t>>)@i2
                             & not (#i2 = #i)))
-                | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) "
+                | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)
+                | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i) "
+
+
+
+// lemma injectiveagreement_ue_seaf_PKSN_noAsyKeyRev_noSupiRev_noKeyRev [heuristic={tactic_0}, hide_lemma=sqn_ue_src, hide_lemma=sqn_ue_nodecrease]:
+//     " All a b t #i. Commit(a,b,<'UE','SEAF',<'PK_SN', t>>)@i
+//         ==> (Ex #j. Running(b,a,<'UE','SEAF',<'PK_SN', t>>)@j 
+//              & j < i
+//              & not (Ex a2 b2 #i2. Commit(a2,b2,<'UE','SEAF',<'K_seaf', t>>)@i2
+//                         & not (#i2 = #i)))
+//             | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i) 
+//             | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)"
 
 /********************************************/
 /*     Agreement UE -> SEAF (after KC)      */
@@ -2686,6 +2669,8 @@ lemma weakagreement_seaf_ue_noKeyRev_noChanRev [heuristic={tactic_2}, hide_lemma
         ==> (Ex t2 #j. Running(b,a, t2)@j)
         | (Ex X key #r. Rev(X, <'k',key>)@r & Honest(X)@i)
         | (Ex X #r. Rev(X, 'secureChannel')@r & Honest(X)@i) "
+
+
 
 
 /********************************************/
@@ -2920,7 +2905,7 @@ lemma secrecy_ue_supi_noChanRevAtAll_noSupiRev_noAsyKeyRev [heuristic={secrecy_u
     " All supi t #i. Secret(<'UE', supi>, 'supi', t)@i
         ==> not (Ex #j. K(t)@j)
                 | (Ex X #r. Rev(X, 'secureChannel')@r)
-            | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
+                | (Ex X k #r. Rev(X, <'skHN',k>)@r & Honest(X)@i)
                 | (Ex X s #r. Rev(X, <'supi',s>)@r & Honest(X)@i) "
 
 // attack (stored)
@@ -3134,4 +3119,3 @@ lemma secrecy_seaf_supi_noChanRevAtAll_noSupiRev_noKeyRev_noSqnRev [heuristic={s
 
 
 end
-

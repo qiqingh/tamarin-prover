@@ -1638,8 +1638,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
    Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
    In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
         <'5G', idSN>, pk(~sk_SN), sig_SN>
-   ),
-   In( additional_SN_verify )
+   )
    ]
   --[
   Equality( verify(sig_SN, pk(~sk_SN), pk(~sk_HN)), true ),
@@ -1720,8 +1719,7 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
      Sqn_UE( ~supi, ~idHN, SqnUE, ~sqn_root, count ),
      In( <RAND, <(f5(~k, RAND)⊕(SqnUE++dif)), f1(~k, <(SqnUE++dif), RAND>)>, 
           <'5G', idSN>, pk(~sk_SN), sig_SN>
-     ),
-     In( additional_SN_verify )
+     )
      ]
     --[
     Equality( z, true ),
@@ -1794,20 +1792,20 @@ rule (modulo E) ue_receive_authReq_freshness_success_send_authResp:
      ]
     variants (modulo AC)
     1. ~sk_HN
-             = ~sk_HN.21
+             = ~sk_HN.20
        ~sk_SN
-             = ~sk_SN.22
+             = ~sk_SN.21
        sig_SN
-             = sign(pk(~sk_SN.22), ~sk_HN.21)
+             = sign(pk(~sk_SN.21), ~sk_HN.20)
        z     = true
     
     2. ~sk_HN
-             = ~sk_HN.32
+             = ~sk_HN.30
        ~sk_SN
-             = ~sk_SN.33
+             = ~sk_SN.31
        sig_SN
-             = sig_SN.44
-       z     = verify(sig_SN.44, pk(~sk_SN.33), pk(~sk_HN.32))
+             = sig_SN.41
+       z     = verify(sig_SN.41, pk(~sk_SN.31), pk(~sk_HN.30))
     // loop breaker: [3]
   */
 
@@ -4832,7 +4830,7 @@ summary of summaries:
 
 analyzed: 5G_AKA_test.spthy
 
-  processing time: 28.65s
+  processing time: 27.66s
   
   dummy (all-traces): analysis incomplete (1 steps)
   rand_autn_src (all-traces): analysis incomplete (1 steps)

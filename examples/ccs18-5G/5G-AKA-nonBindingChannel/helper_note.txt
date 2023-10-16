@@ -1,10 +1,33 @@
 ##command useful
-tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev --derivcheck-timeout=0 5G_AKA.spthy > ./origin-results/weakagreement_ue_seaf_noAsyKeyRev_noSupiRev_noSqnRev_noKeyRev_noChanRev.txt
+nohup tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=noninjectiveagreement_hss_seaf_PKSN --derivcheck-timeout=0 5G_AKA_test.spthy > ./usenix_results/noninjectiveagreement_hss_seaf_PKSN.txt &
+
+
+nohup tamarin-prover --heuristic=O --oraclename=./5G_AKA.oracle --prove=injectiveagreement_ue_seaf_kseaf_noKeyRev --derivcheck-timeout=0 5G_AKA_test.spthy > ./usenix_results/injectiveagreement_ue_seaf_kseaf_noKeyRev.txt &
+
 
 executability_honest
 executability_keyConf_honest
 executability_desync
 executability_resync
+
+
+tamarin-prover interactive --heuristic=O --oraclename=5G_AKA_passive_privacy_game.oracle --diff .
+
+tamarin-prover +RTS -N20 -RTS --diff --prove=Observational_equivalence --derivcheck-timeout=0 5G_AKA_simplified_privacy_active.spthy
+
+
+tamarin-prover --diff --prove=sqn_ue_invariance 5G_AKA_simplified_privacy_active.spthy
+
+tamarin-prover --diff --prove=sqn_hss_invariance 5G_AKA_simplified_privacy_active.spthy
+
+nohup tamarin-prover --diff --prove=Observational_equivalence 5G_AKA_simplified_privacy_active_origin.spthy > Observational_equivalence_origin.txt &
+
+sqn_ue_invariance
+
+sqn_hss_invariance
+
+Observational_equivalence
+
 
 
 #########################################################
@@ -61,6 +84,11 @@ ssh qiqing@aisec.cse.buffalo.edu
 
 
 scp ./5G_AKA_test.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin-prover/examples/ccs18-5G/5G-AKA-nonBindingChannel/
+
+
+scp ./5G_AKA_simplified_privacy_active_origin.spthy qiqing@aisec.cse.buffalo.edu:/home/csgrad/qiqing/tamarin-prover/examples/ccs18-5G/5G-AKA-untraceability/
+
+
 #########################################################
 
 

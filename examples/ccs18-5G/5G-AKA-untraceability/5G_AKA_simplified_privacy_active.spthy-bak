@@ -55,12 +55,12 @@ rule init_homeNet:
 // But allow only one to be used in the left system
 // while both may be used in the right system
 rule supi_supply:
-    [Fr(~a), Fr(~b)]
+        [Fr(~a), Fr(~b)]
 	--[ Once('supiSupply') ]->
 	[!SUPI_Init(~a+~b),
-     SUPI(~a), 
-     SUPI(diff(~a,~b))
-    ]
+         SUPI(~a), 
+         SUPI(diff(~a,~b))
+        ]
 
 // Initialize the subscription
 rule add_subscription:
@@ -163,7 +163,7 @@ rule seaf_1_receive_attachReq:
 	, Fr(~RAND)
 	, In(count) // necessary to avoid open chains
         ]
-    --[
+      --[
 	// Executability
 	   Start_SEAF_Session('seaf')
 
@@ -224,7 +224,7 @@ rule ue_2_receive_authReq_fail_freshness_send_sync_failure:
 		// Input, checks
 		AK = f5(~k, RAND)
 		MAC = f1(~k, <SqnHSS, RAND>) // check on the MAC
-        AUTN = <SqnHSS XOR AK, MAC>
+                AUTN = <SqnHSS XOR AK, MAC>
 		msgIn = < RAND, AUTN >
 		// Output
 		AKS = f5_star(~k, RAND)
@@ -238,18 +238,18 @@ rule ue_2_receive_authReq_fail_freshness_send_sync_failure:
 	, In(msgIn) 
 	, In(count)	// necessary to avoid open chains
         ]
-    --[ UE_Sync_Failure()
+      --[ UE_Sync_Failure()
         , Replayed(AUTN)
-		, UE_End()
-		// Restriction
-		, Greater_Or_Equal_Than(SqnUE, SqnHSS) // Check freshness (FAIL)
-	    , Once('fail')
+	, UE_End()
+	// Restriction
+	, Greater_Or_Equal_Than(SqnUE, SqnHSS) // Check freshness (FAIL)
+        , Once('fail')
 
 	// Open chains
         , Sqn_UE_Invariance(~supi, SqnUE, ~sqn_root, count)
 
         // Helper lemmas
-		, Sqn_UE_Nochange(~supi, SqnUE)
+	, Sqn_UE_Nochange(~supi, SqnUE)
 	]->
 	[Out(out_msg) ]
 
